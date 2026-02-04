@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense, lazy } from 'react';
 import { useTaskStore } from '../stores/taskStore';
 import KanbanBoard from '../components/KanbanBoard';
-import TaskModal from '../components/TaskModal';
 import Header from '../components/Header';
+
+const TaskModal = lazy(() => import('../components/TaskModal'));
 
 export default function Dashboard() {
   const { fetchTasks, isLoading, error } = useTaskStore();
@@ -58,11 +59,15 @@ export default function Dashboard() {
         <KanbanBoard onTaskClick={handleTaskClick} />
       </div>
 
-      <TaskModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        task={selectedTask}
-      />
+      {isModalOpen && (
+        <Suspense fallback={null}>
+          <TaskModal
+            isOpen={isModalOpen}
+            onClose={handleCloseModal}
+            task={selectedTask}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

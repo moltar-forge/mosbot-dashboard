@@ -11,10 +11,39 @@ export const useTaskStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await api.get('/tasks');
-      set({ tasks: response.data, isLoading: false });
+      // API returns { data: [...], pagination: {...} }
+      set({ tasks: response.data.data || [], isLoading: false });
     } catch (error) {
       set({ error: error.message, isLoading: false });
       console.error('Failed to fetch tasks:', error);
+    }
+  },
+  
+  // Fetch a single task by ID
+  fetchTaskById: async (taskId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.get(`/tasks/${taskId}`);
+      // API returns { data: {...} }
+      const task = response.data.data;
+      
+      // Update the task in the store if it exists, otherwise add it
+      set((state) => {
+        const existingIndex = state.tasks.findIndex(t => t.id === taskId);
+        if (existingIndex >= 0) {
+          const updatedTasks = [...state.tasks];
+          updatedTasks[existingIndex] = task;
+          return { tasks: updatedTasks, isLoading: false };
+        } else {
+          return { tasks: [...state.tasks, task], isLoading: false };
+        }
+      });
+      
+      return task;
+    } catch (error) {
+      set({ error: error.message, isLoading: false });
+      console.error('Failed to fetch task:', error);
+      throw error;
     }
   },
   
@@ -23,11 +52,13 @@ export const useTaskStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await api.post('/tasks', taskData);
+      // API returns { data: {...} }
+      const newTask = response.data.data;
       set((state) => ({
-        tasks: [...state.tasks, response.data],
+        tasks: [...state.tasks, newTask],
         isLoading: false,
       }));
-      return response.data;
+      return newTask;
     } catch (error) {
       set({ error: error.message, isLoading: false });
       console.error('Failed to create task:', error);
@@ -40,13 +71,15 @@ export const useTaskStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await api.patch(`/tasks/${taskId}`, updates);
+      // API returns { data: {...} }
+      const updatedTask = response.data.data;
       set((state) => ({
         tasks: state.tasks.map((task) =>
-          task.id === taskId ? response.data : task
+          task.id === taskId ? updatedTask : task
         ),
         isLoading: false,
       }));
-      return response.data;
+      return updatedTask;
     } catch (error) {
       set({ error: error.message, isLoading: false });
       console.error('Failed to update task:', error);
@@ -99,5 +132,17 @@ export const useTaskStore = create((set, get) => ({
   // Get tasks by status
   getTasksByStatus: (status) => {
     return get().tasks.filter((task) => task.status === status);
+  },
+  
+  // Fetch task history
+  fetchTaskHistory: async (taskId) => {
+    try {
+      const response = await api.get(`/tasks/${taskId}/history`);
+      // API returns { data: [...], pagination: {...} }
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch task history:', error);
+      throw error;
+    }
   },
 }));

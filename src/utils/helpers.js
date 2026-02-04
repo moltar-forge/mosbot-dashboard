@@ -15,6 +15,49 @@ export const formatRelativeTime = (date) => {
   return formatDistanceToNow(new Date(date), { addSuffix: true });
 };
 
+// Parse date from database (PostgreSQL TIMESTAMP without timezone is typically UTC)
+// If the date string doesn't have timezone info, treat it as UTC
+export const parseDatabaseDate = (dateString) => {
+  if (!dateString) return null;
+  
+  // If it's already a Date object, return it
+  if (dateString instanceof Date) return dateString;
+  
+  // If it's a number (timestamp), create Date from it
+  if (typeof dateString === 'number') return new Date(dateString);
+  
+  // If it's a string, check if it has timezone info
+  const str = String(dateString).trim();
+  
+  // If it ends with Z or has timezone offset (+/-HH:MM), parse as-is (already has timezone)
+  if (str.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(str)) {
+    return new Date(str);
+  }
+  
+  // PostgreSQL returns timestamps in format: "2026-02-04 09:18:17.087" (space-separated, no timezone)
+  // Convert space to 'T' and append 'Z' to treat as UTC
+  const isoString = str.replace(' ', 'T') + 'Z';
+  return new Date(isoString);
+};
+
+// Format date/time in user's local timezone with full details
+// Uses Singapore locale (en-SG) for dd/mm/yyyy format
+export const formatDateTimeLocal = (date) => {
+  if (!date) return '';
+  const parsedDate = parseDatabaseDate(date);
+  if (!parsedDate || isNaN(parsedDate.getTime())) return '';
+  
+  return parsedDate.toLocaleString('en-SG', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
+};
+
 export const truncateText = (text, maxLength = 100) => {
   if (!text || text.length <= maxLength) return text;
   return text.substring(0, maxLength) + '...';

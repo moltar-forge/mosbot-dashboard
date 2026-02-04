@@ -1,26 +1,49 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Sidebar from './components/Sidebar';
+import { useEffect } from 'react';
+import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Docs from './pages/Docs';
 import Log from './pages/Log';
+import Archived from './pages/Archived';
+import Settings from './pages/Settings';
+import TaskView from './pages/TaskView';
+import { useAuthStore } from './stores/authStore';
 
 function App() {
+  const initialize = useAuthStore((state) => state.initialize);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
+
+  useEffect(() => {
+    if (!isInitialized) {
+      initialize();
+    }
+  }, [initialize, isInitialized]);
+
   return (
-    <Router>
-      <div className="flex h-screen overflow-hidden bg-dark-950">
-        {/* Sidebar */}
-        <Sidebar />
-        
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/docs" element={<Docs />} />
-            <Route path="/log" element={<Log />} />
-          </Routes>
-        </div>
-      </div>
-    </Router>
+    <ErrorBoundary>
+      <Router
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<Layout><Dashboard /></Layout>} />
+            <Route path="/docs" element={<Layout><Docs /></Layout>} />
+            <Route path="/log" element={<Layout><Log /></Layout>} />
+            <Route path="/archived" element={<Layout><Archived /></Layout>} />
+            <Route path="/settings" element={<Layout><Settings /></Layout>} />
+            <Route path="/settings/users" element={<Layout><Settings /></Layout>} />
+            <Route path="/task/:id" element={<Layout><TaskView /></Layout>} />
+          </Route>
+        </Routes>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

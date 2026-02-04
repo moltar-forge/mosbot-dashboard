@@ -1,9 +1,26 @@
 import { useDrag } from 'react-dnd';
-import { ClockIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
-import { PRIORITY_CONFIG } from '../utils/constants';
+import { 
+  ClockIcon, 
+  ChatBubbleLeftIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  SparklesIcon,
+  ArrowTrendingUpIcon,
+  MagnifyingGlassIcon,
+} from '@heroicons/react/24/outline';
+import { PRIORITY_CONFIG, TASK_PRIORITY, TASK_TYPE_CONFIG, TASK_TYPE } from '../utils/constants';
 import { formatRelativeTime, truncateText, classNames } from '../utils/helpers';
 
 const ITEM_TYPE = 'TASK';
+
+// Icon component mapping
+const ICON_MAP = {
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  SparklesIcon,
+  ArrowTrendingUpIcon,
+  MagnifyingGlassIcon,
+};
 
 export default function TaskCard({ task, onClick }) {
   const [{ isDragging }, drag] = useDrag(() => ({
@@ -14,36 +31,38 @@ export default function TaskCard({ task, onClick }) {
     }),
   }));
 
-  const priorityConfig = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
+  const priorityConfig = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG[TASK_PRIORITY.MEDIUM];
+  const taskType = task.type || TASK_TYPE.TASK;
+  const typeConfig = TASK_TYPE_CONFIG[taskType] || TASK_TYPE_CONFIG[TASK_TYPE.TASK];
+  const TypeIcon = ICON_MAP[typeConfig.icon];
 
   return (
     <div
       ref={drag}
       onClick={onClick}
       className={classNames(
-        'card card-hover p-4 cursor-pointer transition-all duration-200',
+        'card card-hover p-4 cursor-pointer transition-all duration-200 border-l-4',
+        priorityConfig.borderColor,
         isDragging ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
       )}
     >
-      {/* Header with priority badge */}
-      <div className="flex items-start justify-between mb-3">
-        <h3 className="text-sm font-semibold text-dark-100 flex-1 pr-2">
+      {/* Header with type icon */}
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <h3 className="text-sm font-semibold text-dark-100 flex-1">
           {task.title}
         </h3>
-        <span
-          className={classNames(
-            'px-2 py-0.5 text-xs font-medium rounded',
-            priorityConfig.color
-          )}
-        >
-          {priorityConfig.label}
-        </span>
+        {TypeIcon && (
+          <TypeIcon 
+            className={classNames('w-5 h-5 flex-shrink-0', typeConfig.color)} 
+            title={typeConfig.label}
+          />
+        )}
       </div>
 
-      {/* Description */}
-      {task.description && (
+      {/* Description/Summary */}
+      {(task.summary || task.description) && (
         <p className="text-sm text-dark-400 mb-3">
-          {truncateText(task.description, 120)}
+          {truncateText(task.summary || task.description, 120)}
         </p>
       )}
 
@@ -64,10 +83,10 @@ export default function TaskCard({ task, onClick }) {
       {/* Footer with metadata */}
       <div className="flex items-center justify-between text-xs text-dark-500">
         <div className="flex items-center gap-3">
-          {task.dueDate && (
+          {(task.due_date || task.dueDate) && (
             <div className="flex items-center gap-1">
               <ClockIcon className="w-4 h-4" />
-              <span>{formatRelativeTime(task.dueDate)}</span>
+              <span>{formatRelativeTime(task.due_date || task.dueDate)}</span>
             </div>
           )}
           {task.comments && task.comments > 0 && (
@@ -78,14 +97,25 @@ export default function TaskCard({ task, onClick }) {
           )}
         </div>
         
-        {/* Assignee avatar */}
-        {task.assignee && (
-          <div className="flex items-center gap-1">
-            <div className="w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center text-white text-xs font-medium">
-              {task.assignee.charAt(0).toUpperCase()}
+        {/* Reporter and Assignee avatars */}
+        <div className="flex items-center gap-1">
+          {task.reporter_name && (
+            <div 
+              className="w-6 h-6 rounded-full bg-dark-700 flex items-center justify-center text-dark-300 text-xs font-medium border border-dark-600"
+              title={`Reporter: ${task.reporter_name}`}
+            >
+              {task.reporter_name.charAt(0).toUpperCase()}
             </div>
-          </div>
-        )}
+          )}
+          {(task.assignee_name || task.assignee) && (
+            <div 
+              className="w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center text-white text-xs font-medium"
+              title={`Assignee: ${task.assignee_name || task.assignee}`}
+            >
+              {(task.assignee_name || task.assignee).charAt(0).toUpperCase()}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
