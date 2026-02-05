@@ -1,21 +1,24 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import { useAuthStore } from '../stores/authStore';
 
-// Mock the auth store
-vi.mock('../stores/authStore', () => ({
-  useAuthStore: vi.fn(),
-}));
-
 describe('ProtectedRoute', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    // Reset store to default state before each test
+    useAuthStore.setState({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      isLoading: false,
+      isInitialized: false,
+      error: null,
+    });
   });
 
   it('shows loading state when not initialized', () => {
-    useAuthStore.mockReturnValue({
+    useAuthStore.setState({
       isAuthenticated: false,
       isLoading: true,
       isInitialized: false,
@@ -23,7 +26,11 @@ describe('ProtectedRoute', () => {
 
     render(
       <MemoryRouter>
-        <ProtectedRoute />
+        <Routes>
+          <Route element={<ProtectedRoute />}>
+            <Route path="*" element={<div>Test Content</div>} />
+          </Route>
+        </Routes>
       </MemoryRouter>
     );
 
@@ -31,7 +38,7 @@ describe('ProtectedRoute', () => {
   });
 
   it('shows loading state when loading', () => {
-    useAuthStore.mockReturnValue({
+    useAuthStore.setState({
       isAuthenticated: false,
       isLoading: true,
       isInitialized: true,
@@ -39,7 +46,11 @@ describe('ProtectedRoute', () => {
 
     render(
       <MemoryRouter>
-        <ProtectedRoute />
+        <Routes>
+          <Route element={<ProtectedRoute />}>
+            <Route path="*" element={<div>Test Content</div>} />
+          </Route>
+        </Routes>
       </MemoryRouter>
     );
 
@@ -47,7 +58,7 @@ describe('ProtectedRoute', () => {
   });
 
   it('redirects to login when not authenticated', () => {
-    useAuthStore.mockReturnValue({
+    useAuthStore.setState({
       isAuthenticated: false,
       isLoading: false,
       isInitialized: true,
@@ -55,16 +66,22 @@ describe('ProtectedRoute', () => {
 
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
-        <ProtectedRoute />
+        <Routes>
+          <Route element={<ProtectedRoute />}>
+            <Route path="dashboard" element={<div>Dashboard</div>} />
+          </Route>
+          <Route path="login" element={<div>Login Page</div>} />
+        </Routes>
       </MemoryRouter>
     );
 
     // Should redirect to login
-    expect(window.location.pathname).toBe('/login');
+    expect(screen.getByText('Login Page')).toBeInTheDocument();
+    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
   });
 
   it('renders children when authenticated', () => {
-    useAuthStore.mockReturnValue({
+    useAuthStore.setState({
       isAuthenticated: true,
       isLoading: false,
       isInitialized: true,
@@ -72,9 +89,11 @@ describe('ProtectedRoute', () => {
 
     render(
       <MemoryRouter>
-        <ProtectedRoute>
-          <div>Protected Content</div>
-        </ProtectedRoute>
+        <Routes>
+          <Route element={<ProtectedRoute />}>
+            <Route path="*" element={<div>Protected Content</div>} />
+          </Route>
+        </Routes>
       </MemoryRouter>
     );
 
