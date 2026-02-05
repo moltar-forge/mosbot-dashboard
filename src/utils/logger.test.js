@@ -28,6 +28,7 @@ describe('logger', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe('debug', () => {
@@ -245,6 +246,17 @@ describe('logger', () => {
 
   describe('environment context', () => {
     it('includes environment when VITE_API_URL is set', () => {
+      // Ensure VITE_API_URL is set in the mock
+      vi.stubGlobal('import', {
+        meta: {
+          env: {
+            DEV: true,
+            MODE: 'test',
+            VITE_API_URL: 'http://localhost:3000',
+          },
+        },
+      });
+
       logger.info('Test');
 
       const callArgs = consoleInfoSpy.mock.calls[0][0];

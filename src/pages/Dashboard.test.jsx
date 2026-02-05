@@ -144,8 +144,10 @@ describe('Dashboard', () => {
     const createButton = screen.getByText('Create Task');
     await user.click(createButton);
 
-    expect(screen.getByTestId('task-modal')).toBeInTheDocument();
-    expect(screen.getByText('Creating new task')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('task-modal')).toBeInTheDocument();
+      expect(screen.getByText('Creating new task')).toBeInTheDocument();
+    });
   });
 
   it('opens modal with task when task is clicked', async () => {
