@@ -17,6 +17,17 @@ const currentLogLevel = import.meta.env.DEV
   : LOG_LEVELS.INFO;
 
 /**
+ * Get environment info for logging
+ * Exported for testing purposes
+ */
+export const getEnvironmentInfo = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.MODE || 'development';
+  }
+  return null;
+};
+
+/**
  * Create a structured log entry
  */
 const createLogEntry = (level, message, context = {}) => {
@@ -29,8 +40,9 @@ const createLogEntry = (level, message, context = {}) => {
   };
 
   // Add environment context
-  if (import.meta.env.VITE_API_URL) {
-    entry.environment = import.meta.env.MODE || 'development';
+  const environment = getEnvironmentInfo();
+  if (environment) {
+    entry.environment = environment;
   }
 
   return entry;
