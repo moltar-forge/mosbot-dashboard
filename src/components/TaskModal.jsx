@@ -16,6 +16,7 @@ import {
   BoltIcon
 } from '@heroicons/react/24/outline';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useTaskStore } from '../stores/taskStore';
 import { useActivityStore } from '../stores/activityStore';
 import { useAuthStore } from '../stores/authStore';
@@ -895,6 +896,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                   <label className="block text-sm font-medium text-dark-400 mb-2">Description</label>
                                   <div className="prose prose-invert prose-sm max-w-none text-dark-200 bg-dark-800 p-4 rounded-lg">
                                     <ReactMarkdown
+                                      remarkPlugins={[remarkGfm]}
                                       components={{
                                         h1: ({_node, ...props}) => <h1 className="text-2xl font-bold text-dark-100 mt-4 mb-2" {...props} />,
                                         h2: ({_node, ...props}) => <h2 className="text-xl font-semibold text-dark-100 mt-3 mb-2" {...props} />,
@@ -913,6 +915,12 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                         strong: ({_node, ...props}) => <strong className="font-semibold text-dark-100" {...props} />,
                                         em: ({_node, ...props}) => <em className="italic text-dark-200" {...props} />,
                                         a: ({_node, ...props}) => <a className="text-primary-400 hover:text-primary-300 underline" {...props} />,
+                                        table: ({_node, ...props}) => <table className="w-full border-collapse border border-dark-700 my-4" {...props} />,
+                                        thead: ({_node, ...props}) => <thead className="bg-dark-900" {...props} />,
+                                        tbody: ({_node, ...props}) => <tbody {...props} />,
+                                        tr: ({_node, ...props}) => <tr className="border-b border-dark-700" {...props} />,
+                                        th: ({_node, ...props}) => <th className="border border-dark-700 px-4 py-2 text-left font-semibold text-dark-100 bg-dark-900" {...props} />,
+                                        td: ({_node, ...props}) => <td className="border border-dark-700 px-4 py-2 text-dark-200" {...props} />,
                                       }}
                                     >
                                       {formData.description}
@@ -1290,6 +1298,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                                       {isSummary && change.oldValue ? (
                                                         <div className="prose prose-invert prose-xs max-w-none text-dark-300">
                                                           <ReactMarkdown
+                                                            remarkPlugins={[remarkGfm]}
                                                             components={{
                                                               h1: ({_node, ...props}) => <h1 className="text-sm font-bold text-dark-100 mt-2 mb-1" {...props} />,
                                                               h2: ({_node, ...props}) => <h2 className="text-xs font-semibold text-dark-100 mt-2 mb-1" {...props} />,
@@ -1308,6 +1317,12 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                                               strong: ({_node, ...props}) => <strong className="font-semibold text-dark-100" {...props} />,
                                                               em: ({_node, ...props}) => <em className="italic text-dark-300" {...props} />,
                                                               a: ({_node, ...props}) => <a className="text-primary-400 hover:text-primary-300 underline" {...props} />,
+                                                              table: ({_node, ...props}) => <table className="w-full border-collapse border border-dark-700 my-2 text-xs" {...props} />,
+                                                              thead: ({_node, ...props}) => <thead className="bg-dark-900" {...props} />,
+                                                              tbody: ({_node, ...props}) => <tbody {...props} />,
+                                                              tr: ({_node, ...props}) => <tr className="border-b border-dark-700" {...props} />,
+                                                              th: ({_node, ...props}) => <th className="border border-dark-700 px-2 py-1 text-left font-semibold text-dark-100 bg-dark-900 text-[10px]" {...props} />,
+                                                              td: ({_node, ...props}) => <td className="border border-dark-700 px-2 py-1 text-dark-300 text-[10px]" {...props} />,
                                                             }}
                                                           >
                                                             {String(change.oldValue)}
@@ -1324,6 +1339,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                                       {isSummary && change.newValue ? (
                                                         <div className="prose prose-invert prose-xs max-w-none text-dark-300">
                                                           <ReactMarkdown
+                                                            remarkPlugins={[remarkGfm]}
                                                             components={{
                                                               h1: ({_node, ...props}) => <h1 className="text-sm font-bold text-dark-100 mt-2 mb-1" {...props} />,
                                                               h2: ({_node, ...props}) => <h2 className="text-xs font-semibold text-dark-100 mt-2 mb-1" {...props} />,
@@ -1342,6 +1358,12 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                                               strong: ({_node, ...props}) => <strong className="font-semibold text-dark-100" {...props} />,
                                                               em: ({_node, ...props}) => <em className="italic text-dark-300" {...props} />,
                                                               a: ({_node, ...props}) => <a className="text-primary-400 hover:text-primary-300 underline" {...props} />,
+                                                              table: ({_node, ...props}) => <table className="w-full border-collapse border border-dark-700 my-2 text-xs" {...props} />,
+                                                              thead: ({_node, ...props}) => <thead className="bg-dark-900" {...props} />,
+                                                              tbody: ({_node, ...props}) => <tbody {...props} />,
+                                                              tr: ({_node, ...props}) => <tr className="border-b border-dark-700" {...props} />,
+                                                              th: ({_node, ...props}) => <th className="border border-dark-700 px-2 py-1 text-left font-semibold text-dark-100 bg-dark-900 text-[10px]" {...props} />,
+                                                              td: ({_node, ...props}) => <td className="border border-dark-700 px-2 py-1 text-dark-300 text-[10px]" {...props} />,
                                                             }}
                                                           >
                                                             {String(change.newValue)}
@@ -1362,6 +1384,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                                       {isSummary && change.oldValue ? (
                                                         <div className="prose prose-invert prose-xs max-w-none text-dark-300">
                                                           <ReactMarkdown
+                                                            remarkPlugins={[remarkGfm]}
                                                             components={{
                                                               h1: ({_node, ...props}) => <h1 className="text-sm font-bold text-dark-100 mt-2 mb-1" {...props} />,
                                                               h2: ({_node, ...props}) => <h2 className="text-xs font-semibold text-dark-100 mt-2 mb-1" {...props} />,
@@ -1380,6 +1403,12 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                                               strong: ({_node, ...props}) => <strong className="font-semibold text-dark-100" {...props} />,
                                                               em: ({_node, ...props}) => <em className="italic text-dark-300" {...props} />,
                                                               a: ({_node, ...props}) => <a className="text-primary-400 hover:text-primary-300 underline" {...props} />,
+                                                              table: ({_node, ...props}) => <table className="w-full border-collapse border border-dark-700 my-2 text-xs" {...props} />,
+                                                              thead: ({_node, ...props}) => <thead className="bg-dark-900" {...props} />,
+                                                              tbody: ({_node, ...props}) => <tbody {...props} />,
+                                                              tr: ({_node, ...props}) => <tr className="border-b border-dark-700" {...props} />,
+                                                              th: ({_node, ...props}) => <th className="border border-dark-700 px-2 py-1 text-left font-semibold text-dark-100 bg-dark-900 text-[10px]" {...props} />,
+                                                              td: ({_node, ...props}) => <td className="border border-dark-700 px-2 py-1 text-dark-300 text-[10px]" {...props} />,
                                                             }}
                                                           >
                                                             {String(change.oldValue)}
@@ -1396,6 +1425,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                                       {isSummary && change.newValue ? (
                                                         <div className="prose prose-invert prose-xs max-w-none text-dark-300">
                                                           <ReactMarkdown
+                                                            remarkPlugins={[remarkGfm]}
                                                             components={{
                                                               h1: ({_node, ...props}) => <h1 className="text-sm font-bold text-dark-100 mt-2 mb-1" {...props} />,
                                                               h2: ({_node, ...props}) => <h2 className="text-xs font-semibold text-dark-100 mt-2 mb-1" {...props} />,
@@ -1414,6 +1444,12 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                                               strong: ({_node, ...props}) => <strong className="font-semibold text-dark-100" {...props} />,
                                                               em: ({_node, ...props}) => <em className="italic text-dark-300" {...props} />,
                                                               a: ({_node, ...props}) => <a className="text-primary-400 hover:text-primary-300 underline" {...props} />,
+                                                              table: ({_node, ...props}) => <table className="w-full border-collapse border border-dark-700 my-2 text-xs" {...props} />,
+                                                              thead: ({_node, ...props}) => <thead className="bg-dark-900" {...props} />,
+                                                              tbody: ({_node, ...props}) => <tbody {...props} />,
+                                                              tr: ({_node, ...props}) => <tr className="border-b border-dark-700" {...props} />,
+                                                              th: ({_node, ...props}) => <th className="border border-dark-700 px-2 py-1 text-left font-semibold text-dark-100 bg-dark-900 text-[10px]" {...props} />,
+                                                              td: ({_node, ...props}) => <td className="border border-dark-700 px-2 py-1 text-dark-300 text-[10px]" {...props} />,
                                                             }}
                                                           >
                                                             {String(change.newValue)}

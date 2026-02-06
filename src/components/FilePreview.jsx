@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { DocumentTextIcon, CodeBracketIcon, PencilIcon, CheckIcon, XMarkIcon, LockClosedIcon, ClipboardIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useAuthStore } from '../stores/authStore';
@@ -367,7 +368,19 @@ export default function FilePreview({ file, onDelete }) {
           />
         ) : isMarkdown ? (
           <div className="prose prose-invert prose-sm max-w-none">
-            <ReactMarkdown>{content.content}</ReactMarkdown>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                table: ({_node, ...props}) => <table className="w-full border-collapse border border-dark-700 my-4" {...props} />,
+                thead: ({_node, ...props}) => <thead className="bg-dark-900" {...props} />,
+                tbody: ({_node, ...props}) => <tbody {...props} />,
+                tr: ({_node, ...props}) => <tr className="border-b border-dark-700" {...props} />,
+                th: ({_node, ...props}) => <th className="border border-dark-700 px-4 py-2 text-left font-semibold text-dark-100 bg-dark-900" {...props} />,
+                td: ({_node, ...props}) => <td className="border border-dark-700 px-4 py-2 text-dark-200" {...props} />,
+              }}
+            >
+              {content.content}
+            </ReactMarkdown>
           </div>
         ) : (
           <pre className="bg-dark-950 p-4 rounded-lg border border-dark-800 overflow-x-auto">
