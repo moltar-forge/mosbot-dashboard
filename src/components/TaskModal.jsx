@@ -619,17 +619,17 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
     const changes = [];
     
     // Special handling for comment events
-    if (entry.meta?.action === 'comment_created') {
+    if (entry.event_type === 'COMMENT_CREATED') {
       changes.push({
         field: 'Comment',
         fieldKey: 'comment_body',
         oldValue: null,
-        newValue: entry.meta.comment_body || '(no content)'
+        newValue: entry.meta?.comment_body || '(no content)'
       });
       return changes;
     }
     
-    if (entry.meta?.action === 'comment_updated') {
+    if (entry.event_type === 'COMMENT_UPDATED') {
       changes.push({
         field: 'Comment',
         fieldKey: 'comment_body',
@@ -639,7 +639,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
       return changes;
     }
     
-    if (entry.meta?.action === 'comment_deleted') {
+    if (entry.event_type === 'COMMENT_DELETED') {
       changes.push({
         field: 'Comment',
         fieldKey: 'comment_body',
@@ -728,17 +728,6 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
   const getEventIcon = (eventType, meta) => {
     const iconClass = "w-5 h-5";
     
-    // Check for comment events in meta
-    if (meta?.action === 'comment_created') {
-      return <ChatBubbleLeftRightIcon className={iconClass} />;
-    }
-    if (meta?.action === 'comment_updated') {
-      return <PencilIcon className={iconClass} />;
-    }
-    if (meta?.action === 'comment_deleted') {
-      return <TrashIcon className={iconClass} />;
-    }
-    
     switch (eventType) {
       case 'CREATED':
         return <PlusCircleIcon className={iconClass} />;
@@ -751,23 +740,18 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
         return <ArrowUturnLeftIcon className={iconClass} />;
       case 'DELETED':
         return <TrashIcon className={iconClass} />;
+      case 'COMMENT_CREATED':
+        return <ChatBubbleLeftRightIcon className={iconClass} />;
+      case 'COMMENT_UPDATED':
+        return <PencilIcon className={iconClass} />;
+      case 'COMMENT_DELETED':
+        return <TrashIcon className={iconClass} />;
       default:
         return <PencilSquareIcon className={iconClass} />;
     }
   };
   
   const getEventColor = (eventType, meta) => {
-    // Check for comment events in meta
-    if (meta?.action === 'comment_created') {
-      return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
-    }
-    if (meta?.action === 'comment_updated') {
-      return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-    }
-    if (meta?.action === 'comment_deleted') {
-      return 'bg-red-500/10 text-red-400 border-red-500/20';
-    }
-    
     switch (eventType) {
       case 'CREATED':
         return 'bg-green-500/10 text-green-400 border-green-500/20';
@@ -780,23 +764,18 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
         return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
       case 'DELETED':
         return 'bg-red-500/10 text-red-400 border-red-500/20';
+      case 'COMMENT_CREATED':
+        return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
+      case 'COMMENT_UPDATED':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'COMMENT_DELETED':
+        return 'bg-red-500/10 text-red-400 border-red-500/20';
       default:
         return 'bg-primary-500/10 text-primary-400 border-primary-500/20';
     }
   };
   
   const getEventLabel = (eventType, meta) => {
-    // Check for comment events in meta
-    if (meta?.action === 'comment_created') {
-      return 'Comment added';
-    }
-    if (meta?.action === 'comment_updated') {
-      return 'Comment edited';
-    }
-    if (meta?.action === 'comment_deleted') {
-      return 'Comment deleted';
-    }
-    
     switch (eventType) {
       case 'CREATED':
         return 'Created';
@@ -812,6 +791,12 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
         return 'Deleted';
       case 'UPDATED':
         return 'Updated';
+      case 'COMMENT_CREATED':
+        return 'Comment added';
+      case 'COMMENT_UPDATED':
+        return 'Comment edited';
+      case 'COMMENT_DELETED':
+        return 'Comment deleted';
       default:
         return eventType;
     }

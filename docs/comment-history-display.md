@@ -65,11 +65,11 @@ Task history now properly displays comment-related events with custom icons, col
 
 ### Detection Logic
 
-Comment events are detected by checking the `meta.action` field in the task log entry:
+Comment events are detected by checking the `event_type` field in the task log entry:
 
-- `meta.action === 'comment_created'` → Comment added
-- `meta.action === 'comment_updated'` → Comment edited
-- `meta.action === 'comment_deleted'` → Comment deleted
+- `event_type === 'COMMENT_CREATED'` → Comment added
+- `event_type === 'COMMENT_UPDATED'` → Comment edited
+- `event_type === 'COMMENT_DELETED'` → Comment deleted
 
 ### Comment Content Display
 
