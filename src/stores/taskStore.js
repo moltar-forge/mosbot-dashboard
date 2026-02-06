@@ -5,20 +5,45 @@ import logger from '../utils/logger';
 export const useTaskStore = create((set, get) => ({
   tasks: [],
   isLoading: false,
+  isRefreshing: false, // Separate flag for background refresh
   error: null,
   searchQuery: '',
+  lastFetchedAt: null, // Track when data was last fetched
   
   // Fetch all tasks
-  fetchTasks: async () => {
-    set({ isLoading: true, error: null });
+  fetchTasks: async (options = {}) => {
+    const { silent = false } = options; // Silent mode for background refresh
+    
+    // Use isRefreshing for silent updates, isLoading for user-initiated
+    if (silent) {
+      set({ isRefreshing: true, error: null });
+    } else {
+      set({ isLoading: true, error: null });
+    }
+    
     try {
       const response = await api.get('/tasks');
       // API returns { data: [...], pagination: {...} }
-      set({ tasks: response.data.data || [], isLoading: false });
+      set({ 
+        tasks: response.data.data || [], 
+        isLoading: false,
+        isRefreshing: false,
+        lastFetchedAt: Date.now(),
+        error: null,
+      });
     } catch (error) {
-      set({ error: error.message, isLoading: false });
+      set({ 
+        error: error.message, 
+        isLoading: false,
+        isRefreshing: false,
+      });
       logger.error('Failed to fetch tasks', error);
     }
+  },
+  
+  // Refresh tasks (alias for silent fetch)
+  refreshTasks: async () => {
+    await get().fetchTasks({ silent: true });
   },
   
   // Fetch a single task by ID
@@ -60,6 +85,10 @@ export const useTaskStore = create((set, get) => ({
         tasks: [...state.tasks, newTask],
         isLoading: false,
       }));
+      
+      // Refresh to get latest data after creation
+      setTimeout(() => get().refreshTasks(), 500);
+      
       return newTask;
     } catch (error) {
       set({ error: error.message, isLoading: false });
@@ -81,6 +110,10 @@ export const useTaskStore = create((set, get) => ({
         ),
         isLoading: false,
       }));
+      
+      // Refresh to get latest data after update
+      setTimeout(() => get().refreshTasks(), 500);
+      
       return updatedTask;
     } catch (error) {
       set({ error: error.message, isLoading: false });
@@ -98,6 +131,9 @@ export const useTaskStore = create((set, get) => ({
         tasks: state.tasks.filter((task) => task.id !== taskId),
         isLoading: false,
       }));
+      
+      // Refresh to get latest data after deletion
+      setTimeout(() => get().refreshTasks(), 500);
     } catch (error) {
       set({ error: error.message, isLoading: false });
       logger.error('Failed to delete task', error);

@@ -1,9 +1,23 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Header from './Header';
+import { useTaskStore } from '../stores/taskStore';
+
+// Mock taskStore
+vi.mock('../stores/taskStore', () => ({
+  useTaskStore: vi.fn(),
+}));
 
 describe('Header', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useTaskStore.mockReturnValue({
+      isRefreshing: false,
+      lastFetchedAt: null,
+    });
+  });
+
   it('renders title', () => {
     render(<Header title="Test Title" />);
 
@@ -105,5 +119,126 @@ describe('Header', () => {
 
     expect(screen.getByText('New Task')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Search tasks...')).toBeInTheDocument();
+  });
+
+  describe('refresh button', () => {
+    it('renders refresh button when onRefresh is provided', () => {
+      const mockOnRefresh = vi.fn();
+      render(<Header title="Title" onRefresh={mockOnRefresh} />);
+
+      expect(screen.getByTitle('Refresh tasks')).toBeInTheDocument();
+    });
+
+    it('does not render refresh button when onRefresh is not provided', () => {
+      render(<Header title="Title" />);
+
+      expect(screen.queryByTitle('Refresh tasks')).not.toBeInTheDocument();
+    });
+
+    it('calls onRefresh when refresh button is clicked', async () => {
+      const user = userEvent.setup();
+      const mockOnRefresh = vi.fn().mockResolvedValue(undefined);
+      render(<Header title="Title" onRefresh={mockOnRefresh} />);
+
+      const refreshButton = screen.getByTitle('Refresh tasks');
+      await user.click(refreshButton);
+
+      expect(mockOnRefresh).toHaveBeenCalledTimes(1);
+    });
+
+    it('disables refresh button when isRefreshing is true', () => {
+      useTaskStore.mockReturnValue({
+        isRefreshing: true,
+        lastFetchedAt: Date.now(),
+      });
+      const mockOnRefresh = vi.fn();
+      render(<Header title="Title" onRefresh={mockOnRefresh} />);
+
+      const refreshButton = screen.getByTitle('Refresh tasks');
+      expect(refreshButton).toBeDisabled();
+    });
+
+    it('disables refresh button when manual refresh is in progress', async () => {
+      const user = userEvent.setup();
+      let resolveRefresh;
+      const mockOnRefresh = vi.fn(
+        () =>
+          new Promise((resolve) => {
+            resolveRefresh = resolve;
+          })
+      );
+      render(<Header title="Title" onRefresh={mockOnRefresh} />);
+
+      const refreshButton = screen.getByTitle('Refresh tasks');
+      expect(refreshButton).not.toBeDisabled();
+
+      // Start refresh
+      const clickPromise = user.click(refreshButton);
+      await waitFor(() => {
+        expect(refreshButton).toBeDisabled();
+      });
+
+      // Complete refresh
+      resolveRefresh();
+      await clickPromise;
+      await waitFor(() => {
+        expect(refreshButton).not.toBeDisabled();
+      });
+    });
+
+    it('shows spinning animation when refreshing', () => {
+      useTaskStore.mockReturnValue({
+        isRefreshing: true,
+        lastFetchedAt: Date.now(),
+      });
+      render(<Header title="Title" onRefresh={vi.fn()} />);
+
+      const refreshButton = screen.getByTitle('Refresh tasks');
+      const icon = refreshButton.querySelector('svg');
+      expect(icon).toHaveClass('animate-spin');
+    });
+
+    it('displays last updated time when lastFetchedAt is available', () => {
+      const now = Date.now();
+      useTaskStore.mockReturnValue({
+        isRefreshing: false,
+        lastFetchedAt: now,
+      });
+      render(<Header title="Title" onRefresh={vi.fn()} />);
+
+      expect(screen.getByText(/Updated/)).toBeInTheDocument();
+    });
+
+    it('displays "Just now" for recent updates', () => {
+      const now = Date.now();
+      useTaskStore.mockReturnValue({
+        isRefreshing: false,
+        lastFetchedAt: now,
+      });
+      render(<Header title="Title" onRefresh={vi.fn()} />);
+
+      expect(screen.getByText(/Just now/)).toBeInTheDocument();
+    });
+
+    it('displays minutes ago for older updates', () => {
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+      useTaskStore.mockReturnValue({
+        isRefreshing: false,
+        lastFetchedAt: fiveMinutesAgo,
+      });
+      render(<Header title="Title" onRefresh={vi.fn()} />);
+
+      expect(screen.getByText(/5m ago/)).toBeInTheDocument();
+    });
+
+    it('does not display last updated when lastFetchedAt is null', () => {
+      useTaskStore.mockReturnValue({
+        isRefreshing: false,
+        lastFetchedAt: null,
+      });
+      render(<Header title="Title" onRefresh={vi.fn()} />);
+
+      expect(screen.queryByText(/Updated/)).not.toBeInTheDocument();
+    });
   });
 });

@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { useBotStore } from '../stores/botStore';
 import logger from '../utils/logger';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -56,14 +55,9 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // Track request start in bot store
-    useBotStore.getState().requestStarted();
-    
     return config;
   },
   (error) => {
-    // Request setup failed, decrement counter
-    useBotStore.getState().requestFinished();
     return Promise.reject(error);
   }
 );
@@ -71,15 +65,6 @@ api.interceptors.request.use(
 // Response interceptor with retry logic
 api.interceptors.response.use(
   (response) => {
-    // Request completed successfully
-    useBotStore.getState().requestFinished();
-    
-    // For successful task completions, show excited mood briefly
-    // (only for POST/PUT/PATCH/DELETE - mutations, not GET requests)
-    if (['post', 'put', 'patch', 'delete'].includes(response.config.method?.toLowerCase())) {
-      useBotStore.getState().recordSuccess();
-    }
-    
     return response;
   },
   async (error) => {
@@ -102,10 +87,6 @@ api.interceptors.response.use(
       return api(config);
     }
 
-    // Request failed and won't be retried
-    useBotStore.getState().requestFinished();
-    useBotStore.getState().recordError();
-    
     // Use structured logging
     if (error.response) {
       // Server responded with error

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import Dashboard from './Dashboard';
 import { useTaskStore } from '../stores/taskStore';
@@ -45,6 +45,7 @@ vi.mock('../components/TaskModal', () => ({
 
 describe('Dashboard', () => {
   const mockFetchTasks = vi.fn();
+  const mockRefreshTasks = vi.fn();
   const mockSetSearchQuery = vi.fn();
   const mockGetState = vi.fn();
 
@@ -53,6 +54,7 @@ describe('Dashboard', () => {
     mockGetState.mockReturnValue({ tasks: [] });
     useTaskStore.mockReturnValue({
       fetchTasks: mockFetchTasks,
+      refreshTasks: mockRefreshTasks,
       isLoading: false,
       error: null,
       searchQuery: '',
@@ -212,5 +214,115 @@ describe('Dashboard', () => {
     await user.type(searchInput, 'new search');
 
     expect(mockSetSearchQuery).toHaveBeenCalled();
+  });
+
+  describe('auto-refresh polling', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('sets up polling interval on mount', () => {
+      render(<Dashboard />);
+
+      // Initial fetch should be called
+      expect(mockFetchTasks).toHaveBeenCalledTimes(1);
+      expect(mockRefreshTasks).not.toHaveBeenCalled();
+
+      // Advance timer by 30 seconds (POLLING_INTERVAL)
+      vi.advanceTimersByTime(30000);
+
+      // refreshTasks should be called after interval
+      expect(mockRefreshTasks).toHaveBeenCalledTimes(1);
+    });
+
+    it('calls refreshTasks at polling interval', () => {
+      render(<Dashboard />);
+
+      // Advance timer multiple intervals
+      vi.advanceTimersByTime(30000);
+      expect(mockRefreshTasks).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(30000);
+      expect(mockRefreshTasks).toHaveBeenCalledTimes(2);
+
+      vi.advanceTimersByTime(30000);
+      expect(mockRefreshTasks).toHaveBeenCalledTimes(3);
+    });
+
+    it('cleans up polling interval on unmount', () => {
+      const { unmount } = render(<Dashboard />);
+
+      // Advance timer once
+      vi.advanceTimersByTime(30000);
+      expect(mockRefreshTasks).toHaveBeenCalledTimes(1);
+
+      // Unmount component
+      unmount();
+
+      // Advance timer again - should not call refreshTasks
+      vi.advanceTimersByTime(30000);
+      expect(mockRefreshTasks).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('visibility change handler', () => {
+    it('refreshes tasks when tab becomes visible', () => {
+      render(<Dashboard />);
+
+      // Simulate tab becoming hidden
+      Object.defineProperty(document, 'visibilityState', {
+        writable: true,
+        configurable: true,
+        value: 'hidden',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(mockRefreshTasks).not.toHaveBeenCalled();
+
+      // Simulate tab becoming visible
+      Object.defineProperty(document, 'visibilityState', {
+        writable: true,
+        configurable: true,
+        value: 'visible',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(mockRefreshTasks).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not refresh when tab becomes hidden', () => {
+      render(<Dashboard />);
+
+      Object.defineProperty(document, 'visibilityState', {
+        writable: true,
+        configurable: true,
+        value: 'hidden',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(mockRefreshTasks).not.toHaveBeenCalled();
+    });
+
+    it('cleans up visibility change listener on unmount', () => {
+      const { unmount } = render(<Dashboard />);
+
+      // Remove the component
+      unmount();
+
+      // Try to trigger visibility change - should not call refreshTasks
+      Object.defineProperty(document, 'visibilityState', {
+        writable: true,
+        configurable: true,
+        value: 'visible',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      // refreshTasks should only be called from initial mount polling, not from visibility change
+      expect(mockRefreshTasks).not.toHaveBeenCalled();
+    });
   });
 });

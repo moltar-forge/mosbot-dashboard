@@ -11,7 +11,7 @@ describe('Toast', () => {
   });
 
   it('does not render when show is false', () => {
-    const { container } = render(
+    render(
       <Toast show={false} message="Hidden message" onClose={vi.fn()} />
     );
 

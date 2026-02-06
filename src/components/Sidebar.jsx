@@ -147,6 +147,9 @@ export default function Sidebar() {
             </div>
             <div className="flex-1 min-w-0 text-left">
               <p className="text-sm font-medium text-dark-100 truncate">{user?.name || 'User'}</p>
+              {user?.id && (
+                <p className="text-xs text-dark-600 truncate">ID: {user.id}</p>
+              )}
               <p className="text-xs text-dark-500 truncate">{user?.email || ''}</p>
             </div>
             <ChevronUpDownIcon className="w-5 h-5 text-dark-500" />

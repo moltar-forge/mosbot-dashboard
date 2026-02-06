@@ -7,34 +7,9 @@ import {
   beforeAll,
   vi,
 } from "vitest";
-import { useBotStore } from "../stores/botStore";
 import logger from "../utils/logger";
 
 // Mock axios before importing client
-const mockAxiosInstance = {
-  get: vi.fn(),
-  post: vi.fn(),
-  put: vi.fn(),
-  patch: vi.fn(),
-  delete: vi.fn(),
-  interceptors: {
-    request: {
-      use: vi.fn(),
-    },
-    response: {
-      use: vi.fn(),
-    },
-  },
-  defaults: {
-    baseURL: "http://localhost:3000/api",
-    timeout: 10000,
-    withCredentials: true,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  },
-};
-
 vi.mock("axios", () => {
   // Create mock instance inside factory to avoid hoisting issues
   const mockInstance = {
@@ -68,13 +43,6 @@ vi.mock("axios", () => {
   };
 });
 
-// Mock botStore
-vi.mock("../stores/botStore", () => ({
-  useBotStore: {
-    getState: vi.fn(),
-  },
-}));
-
 // Mock logger
 vi.mock("../utils/logger", () => ({
   default: {
@@ -93,20 +61,8 @@ global.localStorage = localStorageMock;
 
 // Import after mocks
 import { api } from "./client";
-import axios from "axios";
-
-// Get the mock instance that was created
-const getMockAxiosInstance = () => {
-  // The instance is created by axios.create, so we need to get it from the mock
-  if (axios.create.mock.results.length > 0) {
-    return axios.create.mock.results[0].value;
-  }
-  // If not called yet, return api itself (which is the instance)
-  return api;
-};
 
 describe("api client", () => {
-  let botStoreState;
   let requestInterceptor;
   let requestErrorHandler;
   let responseInterceptor;
@@ -138,15 +94,6 @@ describe("api client", () => {
       responseErrorHandler = api.interceptors.response.use.mock.calls[0][1];
     }
 
-    // Setup botStore mock
-    botStoreState = {
-      requestStarted: vi.fn(),
-      requestFinished: vi.fn(),
-      recordSuccess: vi.fn(),
-      recordError: vi.fn(),
-    };
-    useBotStore.getState.mockReturnValue(botStoreState);
-
     localStorageMock.getItem.mockReturnValue(null);
   });
 
@@ -160,14 +107,11 @@ describe("api client", () => {
       const token = "test-token-123";
       localStorageMock.getItem.mockReturnValue(token);
 
-      // Use stored request interceptor
-
       const config = { headers: {} };
       const result = requestInterceptor(config);
 
       expect(localStorageMock.getItem).toHaveBeenCalledWith("auth_token");
       expect(result.headers.Authorization).toBe(`Bearer ${token}`);
-      expect(botStoreState.requestStarted).toHaveBeenCalled();
     });
 
     it("does not add Authorization header when no token", () => {
@@ -177,80 +121,60 @@ describe("api client", () => {
       const result = requestInterceptor(config);
 
       expect(result.headers.Authorization).toBeUndefined();
-      expect(botStoreState.requestStarted).toHaveBeenCalled();
     });
 
-    it("tracks request start in botStore", () => {
-      requestInterceptor({ headers: {} });
-
-      expect(botStoreState.requestStarted).toHaveBeenCalled();
-    });
-
-    it("tracks request finish on request setup error", async () => {
+    it("handles request setup error", async () => {
       const errorHandler = requestErrorHandler;
       const error = new Error("Request setup failed");
 
-      await errorHandler(error).catch(() => {});
-
-      expect(botStoreState.requestFinished).toHaveBeenCalled();
+      await expect(errorHandler(error)).rejects.toThrow("Request setup failed");
     });
   });
 
   describe("response interceptor", () => {
-    it("tracks request finish on successful response", () => {
+    it("returns response unchanged on successful response", () => {
       const successHandler = responseInterceptor;
       const response = { data: {}, config: { method: "get" } };
 
-      successHandler(response);
+      const result = successHandler(response);
 
-      expect(botStoreState.requestFinished).toHaveBeenCalled();
+      expect(result).toBe(response);
     });
 
-    it("records success for mutation requests (POST)", () => {
+    it("handles POST response", () => {
       const successHandler = responseInterceptor;
       const response = { data: {}, config: { method: "post" } };
 
-      successHandler(response);
+      const result = successHandler(response);
 
-      expect(botStoreState.requestFinished).toHaveBeenCalled();
-      expect(botStoreState.recordSuccess).toHaveBeenCalled();
+      expect(result).toBe(response);
     });
 
-    it("records success for mutation requests (PUT)", () => {
+    it("handles PUT response", () => {
       const successHandler = responseInterceptor;
       const response = { data: {}, config: { method: "put" } };
 
-      successHandler(response);
+      const result = successHandler(response);
 
-      expect(botStoreState.recordSuccess).toHaveBeenCalled();
+      expect(result).toBe(response);
     });
 
-    it("records success for mutation requests (PATCH)", () => {
+    it("handles PATCH response", () => {
       const successHandler = responseInterceptor;
       const response = { data: {}, config: { method: "patch" } };
 
-      successHandler(response);
+      const result = successHandler(response);
 
-      expect(botStoreState.recordSuccess).toHaveBeenCalled();
+      expect(result).toBe(response);
     });
 
-    it("records success for mutation requests (DELETE)", () => {
+    it("handles DELETE response", () => {
       const successHandler = responseInterceptor;
       const response = { data: {}, config: { method: "delete" } };
 
-      successHandler(response);
+      const result = successHandler(response);
 
-      expect(botStoreState.recordSuccess).toHaveBeenCalled();
-    });
-
-    it("does not record success for GET requests", () => {
-      const successHandler = responseInterceptor;
-      const response = { data: {}, config: { method: "get" } };
-
-      successHandler(response);
-
-      expect(botStoreState.requestFinished).toHaveBeenCalled();
-      expect(botStoreState.recordSuccess).not.toHaveBeenCalled();
+      expect(result).toBe(response);
     });
   });
 
@@ -342,8 +266,8 @@ describe("api client", () => {
       const errorHandler = responseErrorHandler;
 
       for (const error of nonRetryableErrors) {
-        await errorHandler(error).catch(() => {});
-        expect(botStoreState.recordError).toHaveBeenCalled();
+        await expect(errorHandler(error)).rejects.toBe(error);
+        expect(logger.error).toHaveBeenCalled();
       }
     });
   });
@@ -398,16 +322,23 @@ describe("api client", () => {
       );
     });
 
-    it("records error in botStore on failure", async () => {
+    it("logs error on failure", async () => {
       const error = {
         response: { status: 400 }, // Non-retryable
         config: { url: "/test", method: "get", __retryCount: 0 },
       };
 
-      await responseErrorHandler(error).catch(() => {});
+      await expect(responseErrorHandler(error)).rejects.toBe(error);
 
-      expect(botStoreState.recordError).toHaveBeenCalled();
-      expect(botStoreState.requestFinished).toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        "API request failed",
+        error,
+        expect.objectContaining({
+          url: "/test",
+          method: "get",
+          status: 400,
+        })
+      );
     });
   });
 

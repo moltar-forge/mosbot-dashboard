@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import Column from './Column';
-import TaskCard from './TaskCard';
 
 // Mock react-dnd
 const mockUseDrop = vi.fn(() => [

@@ -1,18 +1,56 @@
-import { useEffect, useState, Suspense, lazy } from 'react';
+import { useEffect, useState, Suspense, lazy, useRef } from 'react';
 import { useTaskStore } from '../stores/taskStore';
 import KanbanBoard from '../components/KanbanBoard';
 import Header from '../components/Header';
 
 const TaskModal = lazy(() => import('../components/TaskModal'));
 
+const POLLING_INTERVAL = 30000; // 30 seconds
+
 export default function Dashboard() {
-  const { fetchTasks, isLoading, error, searchQuery, setSearchQuery } = useTaskStore();
+  const { fetchTasks, refreshTasks, isLoading, error, searchQuery, setSearchQuery } = useTaskStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+  const pollingIntervalRef = useRef(null);
 
+  // Initial fetch
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
+  
+  // Auto-refresh polling
+  useEffect(() => {
+    // Start polling when component mounts
+    pollingIntervalRef.current = setInterval(() => {
+      refreshTasks();
+    }, POLLING_INTERVAL);
+    
+    // Cleanup on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [refreshTasks]);
+  
+  // Refresh when tab becomes visible (user returns to tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshTasks();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshTasks]);
+  
+  const handleRefresh = async () => {
+    await fetchTasks();
+  };
 
   const handleCreateTask = () => {
     setSelectedTask(null);
@@ -57,6 +95,7 @@ export default function Dashboard() {
         title="Dashboard" 
         subtitle="Kanban board for task management and workflow tracking"
         onCreateTask={handleCreateTask}
+        onRefresh={handleRefresh}
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
       />

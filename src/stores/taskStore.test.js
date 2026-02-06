@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useTaskStore } from './taskStore';
 import { api } from '../api/client';
 import logger from '../utils/logger';
@@ -23,13 +23,20 @@ vi.mock('../utils/logger', () => ({
 describe('taskStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
     // Reset store state
     useTaskStore.setState({
       tasks: [],
       isLoading: false,
+      isRefreshing: false,
       error: null,
       searchQuery: '',
+      lastFetchedAt: null,
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('fetchTasks', () => {
@@ -52,6 +59,51 @@ describe('taskStore', () => {
       expect(useTaskStore.getState().tasks).toEqual(mockTasks);
       expect(useTaskStore.getState().isLoading).toBe(false);
       expect(useTaskStore.getState().error).toBeNull();
+      expect(useTaskStore.getState().lastFetchedAt).toBeTruthy();
+    });
+
+    it('uses isRefreshing flag when silent mode is enabled', async () => {
+      const mockTasks = [{ id: 1, title: 'Task 1', status: 'todo' }];
+
+      api.get.mockResolvedValue({
+        data: {
+          data: mockTasks,
+          pagination: { page: 1, limit: 10, total: 1 },
+        },
+      });
+
+      const fetchPromise = useTaskStore.getState().fetchTasks({ silent: true });
+
+      // During fetch, isRefreshing should be true, isLoading should be false
+      expect(useTaskStore.getState().isRefreshing).toBe(true);
+      expect(useTaskStore.getState().isLoading).toBe(false);
+
+      await fetchPromise;
+
+      expect(useTaskStore.getState().isRefreshing).toBe(false);
+      expect(useTaskStore.getState().isLoading).toBe(false);
+    });
+
+    it('uses isLoading flag when silent mode is disabled', async () => {
+      const mockTasks = [{ id: 1, title: 'Task 1', status: 'todo' }];
+
+      api.get.mockResolvedValue({
+        data: {
+          data: mockTasks,
+          pagination: { page: 1, limit: 10, total: 1 },
+        },
+      });
+
+      const fetchPromise = useTaskStore.getState().fetchTasks({ silent: false });
+
+      // During fetch, isLoading should be true, isRefreshing should be false
+      expect(useTaskStore.getState().isLoading).toBe(true);
+      expect(useTaskStore.getState().isRefreshing).toBe(false);
+
+      await fetchPromise;
+
+      expect(useTaskStore.getState().isLoading).toBe(false);
+      expect(useTaskStore.getState().isRefreshing).toBe(false);
     });
 
     it('handles empty task list', async () => {
@@ -151,6 +203,25 @@ describe('taskStore', () => {
     });
   });
 
+  describe('refreshTasks', () => {
+    it('calls fetchTasks with silent mode', async () => {
+      const mockTasks = [{ id: 1, title: 'Task 1', status: 'todo' }];
+
+      api.get.mockResolvedValue({
+        data: {
+          data: mockTasks,
+          pagination: { page: 1, limit: 10, total: 1 },
+        },
+      });
+
+      await useTaskStore.getState().refreshTasks();
+
+      expect(api.get).toHaveBeenCalledWith('/tasks');
+      expect(useTaskStore.getState().isRefreshing).toBe(false);
+      expect(useTaskStore.getState().isLoading).toBe(false);
+    });
+  });
+
   describe('createTask', () => {
     it('successfully creates a new task', async () => {
       const newTaskData = { title: 'New Task', description: 'Description' };
@@ -161,6 +232,12 @@ describe('taskStore', () => {
           data: createdTask,
         },
       });
+      api.get.mockResolvedValue({
+        data: {
+          data: [createdTask],
+          pagination: { page: 1, limit: 10, total: 1 },
+        },
+      });
 
       const result = await useTaskStore.getState().createTask(newTaskData);
 
@@ -168,6 +245,15 @@ describe('taskStore', () => {
       expect(result).toEqual(createdTask);
       expect(useTaskStore.getState().tasks).toContainEqual(createdTask);
       expect(useTaskStore.getState().isLoading).toBe(false);
+
+      // Advance timer to trigger post-mutation refresh
+      vi.advanceTimersByTime(500);
+
+      // Wait for refresh to complete
+      await vi.runOnlyPendingTimersAsync();
+
+      // Verify refresh was called
+      expect(api.get).toHaveBeenCalledWith('/tasks');
     });
 
     it('handles create error and throws', async () => {
@@ -196,6 +282,12 @@ describe('taskStore', () => {
           data: updatedTask,
         },
       });
+      api.get.mockResolvedValue({
+        data: {
+          data: [updatedTask],
+          pagination: { page: 1, limit: 10, total: 1 },
+        },
+      });
 
       const result = await useTaskStore.getState().updateTask(1, updates);
 
@@ -203,6 +295,15 @@ describe('taskStore', () => {
       expect(result).toEqual(updatedTask);
       expect(useTaskStore.getState().tasks[0]).toEqual(updatedTask);
       expect(useTaskStore.getState().isLoading).toBe(false);
+
+      // Advance timer to trigger post-mutation refresh
+      vi.advanceTimersByTime(500);
+
+      // Wait for refresh to complete
+      await vi.runOnlyPendingTimersAsync();
+
+      // Verify refresh was called
+      expect(api.get).toHaveBeenCalledWith('/tasks');
     });
 
     it('handles update error and throws', async () => {
@@ -225,6 +326,12 @@ describe('taskStore', () => {
       useTaskStore.setState({ tasks: [task1, task2] });
 
       api.delete.mockResolvedValue({});
+      api.get.mockResolvedValue({
+        data: {
+          data: [task2],
+          pagination: { page: 1, limit: 10, total: 1 },
+        },
+      });
 
       await useTaskStore.getState().deleteTask(1);
 
@@ -232,6 +339,15 @@ describe('taskStore', () => {
       expect(useTaskStore.getState().tasks).toHaveLength(1);
       expect(useTaskStore.getState().tasks[0]).toEqual(task2);
       expect(useTaskStore.getState().isLoading).toBe(false);
+
+      // Advance timer to trigger post-mutation refresh
+      vi.advanceTimersByTime(500);
+
+      // Wait for refresh to complete
+      await vi.runOnlyPendingTimersAsync();
+
+      // Verify refresh was called
+      expect(api.get).toHaveBeenCalledWith('/tasks');
     });
 
     it('handles delete error and throws', async () => {

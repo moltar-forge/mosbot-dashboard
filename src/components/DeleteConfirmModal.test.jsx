@@ -231,7 +231,6 @@ describe('DeleteConfirmModal', () => {
   });
 
   it('does not delete when file is not provided', async () => {
-    const user = userEvent.setup();
     render(
       <DeleteConfirmModal isOpen={true} onClose={mockOnClose} file={null} />
     );
