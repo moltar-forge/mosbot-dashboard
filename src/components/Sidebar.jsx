@@ -21,7 +21,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: ChartBarIcon },
   { name: 'Docs', href: '/docs', icon: DocumentTextIcon },
   { name: 'Log', href: '/log', icon: ClipboardDocumentListIcon },
-  { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, adminOnly: true, subpages: [
+  { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, subpages: [
     { name: 'Users', href: '/settings/users', icon: UserIcon },
   ]},
   { name: 'Archived', href: '/archived', icon: ArchiveBoxIcon },
@@ -30,7 +30,7 @@ const navigation = [
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isAdmin } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const [expandedItems, setExpandedItems] = useState({});
 
   const handleLogout = () => {
@@ -65,9 +65,7 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {navigation
-          .filter(item => !item.adminOnly || isAdmin())
-          .map((item) => {
+        {navigation.map((item) => {
             const hasSubpages = item.subpages && item.subpages.length > 0;
             // For items with subpages, only highlight parent if exactly on the parent route
             // For items without subpages, highlight if on the route
@@ -164,30 +162,27 @@ export default function Sidebar() {
             leaveTo="transform opacity-0 scale-95"
           >
             <Menu.Items className="absolute bottom-full left-4 right-4 mb-2 bg-dark-800 border border-dark-700 rounded-lg shadow-xl focus:outline-none">
-              {isAdmin() && (
-                <Menu.Item>
-                  {({ active }) => (
-                    <Link
-                      to="/settings"
-                      className={classNames(
-                        'flex items-center gap-3 px-4 py-3 text-sm transition-colors rounded-t-lg',
-                        active ? 'bg-dark-700 text-dark-100' : 'text-dark-300'
-                      )}
-                    >
-                      <Cog6ToothIcon className="w-5 h-5" />
-                      Settings
-                    </Link>
-                  )}
-                </Menu.Item>
-              )}
+              <Menu.Item>
+                {({ active }) => (
+                  <Link
+                    to="/settings"
+                    className={classNames(
+                      'flex items-center gap-3 px-4 py-3 text-sm transition-colors rounded-t-lg',
+                      active ? 'bg-dark-700 text-dark-100' : 'text-dark-300'
+                    )}
+                  >
+                    <Cog6ToothIcon className="w-5 h-5" />
+                    Settings
+                  </Link>
+                )}
+              </Menu.Item>
               <Menu.Item>
                 {({ active }) => (
                   <button
                     onClick={handleLogout}
                     className={classNames(
-                      'w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors',
-                      active ? 'bg-dark-700 text-red-400' : 'text-red-500',
-                      isAdmin() ? 'rounded-b-lg' : 'rounded-lg'
+                      'w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors rounded-b-lg',
+                      active ? 'bg-dark-700 text-red-400' : 'text-red-500'
                     )}
                   >
                     <ArrowRightOnRectangleIcon className="w-5 h-5" />

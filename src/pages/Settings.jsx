@@ -1,12 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserPlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../stores/authStore';
+import { useToastStore } from '../stores/toastStore';
 import { api } from '../api/client';
+import logger from '../utils/logger';
 import UserModal from '../components/UserModal';
+import UserDeleteConfirmModal from '../components/UserDeleteConfirmModal';
 
 export default function Settings() {
   const { user: currentUser, isAdmin } = useAuthStore();
+  const { showToast } = useToastStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [users, setUsers] = useState([]);
@@ -14,24 +18,33 @@ export default function Settings() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [error, setError] = useState('');
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false, userId: null, userName: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    if (!isAdmin()) {
-      setIsLoading(false);
-      return;
-    }
-
     // Redirect to /settings/users if on /settings
     if (location.pathname === '/settings') {
       navigate('/settings/users', { replace: true });
       return;
     }
 
-    // Fetch users when on /settings/users
+    // Fetch users when on /settings/users (all authenticated users can view)
     if (location.pathname === '/settings/users') {
       fetchUsers();
+      
+      // Track view-only mode encounter for non-admin users
+      const hasModifyPermission = isAdmin();
+      if (!hasModifyPermission) {
+        logger.info('View-only mode encountered in Settings', {
+          userId: currentUser?.id,
+          userEmail: currentUser?.email,
+          userRole: currentUser?.role,
+          page: 'settings/users',
+          mode: 'view-only',
+        });
+      }
     }
-  }, [location.pathname, navigate, isAdmin]);
+  }, [location.pathname, navigate, isAdmin, currentUser]);
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -56,16 +69,33 @@ export default function Settings() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteUser = (user) => {
+    setDeleteConfirmModal({
+      isOpen: true,
+      userId: user.id,
+      userName: user.name,
+    });
+  };
 
+  const handleConfirmDelete = async () => {
+    if (isDeleting || !deleteConfirmModal.userId) return;
+
+    setIsDeleting(true);
     try {
-      await api.delete(`/admin/users/${userId}`);
+      await api.delete(`/admin/users/${deleteConfirmModal.userId}`);
       await fetchUsers();
+      showToast('User deleted successfully', 'success');
+      setDeleteConfirmModal({ isOpen: false, userId: null, userName: null });
     } catch (err) {
-      alert(err.response?.data?.error?.message || 'Failed to delete user');
+      showToast(err.response?.data?.error?.message || 'Failed to delete user', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (!isDeleting) {
+      setDeleteConfirmModal({ isOpen: false, userId: null, userName: null });
     }
   };
 
@@ -89,16 +119,16 @@ export default function Settings() {
     });
   };
 
-  if (!isAdmin()) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <p className="text-xl text-dark-300 mb-2">Access Denied</p>
-          <p className="text-dark-500">You don&apos;t have permission to access this page.</p>
-        </div>
-      </div>
-    );
-  }
+  const canModifyUsers = useMemo(() => {
+    const hasPermission = isAdmin();
+    logger.info('User permission check for user management', {
+      userId: currentUser?.id,
+      userEmail: currentUser?.email,
+      userRole: currentUser?.role,
+      canModifyUsers: hasPermission,
+    });
+    return hasPermission;
+  }, [isAdmin, currentUser]);
 
   return (
     <div className="flex flex-col h-full">
@@ -122,14 +152,21 @@ export default function Settings() {
 
             <div className="card p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-dark-100">User Management</h2>
-                <button
-                  onClick={handleAddUser}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
-                >
-                  <UserPlusIcon className="w-5 h-5" />
-                  Add User
-                </button>
+                <div>
+                  <h2 className="text-lg font-semibold text-dark-100">User Management</h2>
+                  {!canModifyUsers && (
+                    <p className="text-xs text-dark-500 mt-1">View-only access</p>
+                  )}
+                </div>
+                {canModifyUsers && (
+                  <button
+                    onClick={handleAddUser}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+                  >
+                    <UserPlusIcon className="w-5 h-5" />
+                    Add User
+                  </button>
+                )}
               </div>
 
               {isLoading ? (
@@ -150,7 +187,9 @@ export default function Settings() {
                         <th className="text-left text-sm font-medium text-dark-400 pb-3 px-4">Role</th>
                         <th className="text-left text-sm font-medium text-dark-400 pb-3 px-4">Status</th>
                         <th className="text-left text-sm font-medium text-dark-400 pb-3 px-4">Created</th>
-                        <th className="text-right text-sm font-medium text-dark-400 pb-3 px-4">Actions</th>
+                        {canModifyUsers && (
+                          <th className="text-right text-sm font-medium text-dark-400 pb-3 px-4">Actions</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -190,26 +229,28 @@ export default function Settings() {
                             </span>
                           </td>
                           <td className="py-3 px-4 text-dark-400 text-sm">{formatDate(user.created_at)}</td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => handleEditUser(user)}
-                                className="p-2 text-dark-400 hover:text-primary-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Edit user"
-                                disabled={user.role === 'owner' && currentUser?.role !== 'owner'}
-                              >
-                                <PencilIcon className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteUser(user.id)}
-                                className="p-2 text-dark-400 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Delete user"
-                                disabled={user.id === currentUser?.id || user.role === 'owner'}
-                              >
-                                <TrashIcon className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
+                          {canModifyUsers && (
+                            <td className="py-3 px-4">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => handleEditUser(user)}
+                                  className="p-2 text-dark-400 hover:text-primary-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Edit user"
+                                  disabled={user.role === 'owner' && currentUser?.role !== 'owner'}
+                                >
+                                  <PencilIcon className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteUser(user)}
+                                  className="p-2 text-dark-400 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Delete user"
+                                  disabled={user.id === currentUser?.id || user.role === 'owner'}
+                                >
+                                  <TrashIcon className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -227,6 +268,15 @@ export default function Settings() {
         onClose={() => setIsModalOpen(false)}
         user={selectedUser}
         onSave={handleSaveUser}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <UserDeleteConfirmModal
+        isOpen={deleteConfirmModal.isOpen}
+        onClose={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        userName={deleteConfirmModal.userName}
+        isSubmitting={isDeleting}
       />
     </div>
   );
