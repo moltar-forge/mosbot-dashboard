@@ -41,6 +41,7 @@ export default function WorkspaceExplorer() {
   const [viewMode, setViewMode] = useState('tree'); // 'tree' or 'flat'
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingPaths, setLoadingPaths] = useState(new Set());
+  const [treeKey, setTreeKey] = useState(0); // Key to force tree remount on refresh
   
   // Modal states
   const [showCreateFileModal, setShowCreateFileModal] = useState(false);
@@ -96,6 +97,13 @@ export default function WorkspaceExplorer() {
   const handleRefresh = async () => {
     clearErrors();
     try {
+      // Clear all cached listings to ensure fresh data throughout the tree
+      useWorkspaceStore.getState().clearAllListingCache();
+      
+      // Force tree remount to collapse all expanded folders
+      setTreeKey(prev => prev + 1);
+      
+      // Fetch root level (or current path in flat view)
       await fetchListing({ path: currentPath, recursive, force: true });
       showToast('Workspace refreshed', 'success');
     } catch (error) {
@@ -439,6 +447,7 @@ export default function WorkspaceExplorer() {
             </div>
           ) : viewMode === 'tree' ? (
             <WorkspaceTree
+              key={treeKey}
               files={flatFiles}
               selectedFile={selectedFile}
               onSelectFile={handleFileSelect}
