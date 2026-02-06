@@ -70,74 +70,86 @@ export default function ContextMenu({
         </button>
       )}
 
-      {/* Separator if both view and modify options exist */}
-      {!isDirectory && canModify && (
+      {/* Separator */}
+      {!isDirectory && (
         <div className="my-1 border-t border-dark-800" />
       )}
 
-      {/* Admin/Owner only options */}
-      {canModify && (
-        <>
-          {/* New File - only for directories */}
-          {isDirectory && (
-            <button
-              onClick={() => {
-                onNewFile(file);
-                onClose();
-              }}
-              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-dark-300 hover:bg-dark-800 hover:text-dark-100 transition-colors"
-            >
-              <DocumentPlusIcon className="w-4 h-4" />
-              <span>New File</span>
-            </button>
-          )}
-
-          {/* New Folder - only for directories */}
-          {isDirectory && (
-            <button
-              onClick={() => {
-                onNewFolder(file);
-                onClose();
-              }}
-              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-dark-300 hover:bg-dark-800 hover:text-dark-100 transition-colors"
-            >
-              <FolderPlusIcon className="w-4 h-4" />
-              <span>New Folder</span>
-            </button>
-          )}
-
-          {/* Separator if we have new file/folder options */}
-          {isDirectory && (
-            <div className="my-1 border-t border-dark-800" />
-          )}
-
-          {/* Rename - only for files (directories not supported yet) */}
-          {!isDirectory && (
-            <button
-              onClick={() => {
-                onRename(file);
-                onClose();
-              }}
-              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-dark-300 hover:bg-dark-800 hover:text-dark-100 transition-colors"
-            >
-              <PencilIcon className="w-4 h-4" />
-              <span>Rename</span>
-            </button>
-          )}
-
-          {/* Delete */}
-          <button
-            onClick={() => {
-              onDelete(file);
+      {/* Modification options - visible to all, disabled for non-admin */}
+      {/* New File - only for directories */}
+      {isDirectory && (
+        <button
+          onClick={() => {
+            if (canModify) {
+              onNewFile(file);
               onClose();
-            }}
-            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-dark-800 hover:text-red-300 transition-colors"
-          >
-            <TrashIcon className="w-4 h-4" />
-            <span>Delete</span>
-          </button>
-        </>
+            }
+          }}
+          disabled={!canModify}
+          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-dark-300 hover:bg-dark-800 hover:text-dark-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-dark-300"
+          title={canModify ? "Create new file in this folder" : "Admin access required"}
+        >
+          <DocumentPlusIcon className="w-4 h-4" />
+          <span>New File</span>
+        </button>
       )}
+
+      {/* New Folder - only for directories */}
+      {isDirectory && (
+        <button
+          onClick={() => {
+            if (canModify) {
+              onNewFolder(file);
+              onClose();
+            }
+          }}
+          disabled={!canModify}
+          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-dark-300 hover:bg-dark-800 hover:text-dark-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-dark-300"
+          title={canModify ? "Create new folder in this folder" : "Admin access required"}
+        >
+          <FolderPlusIcon className="w-4 h-4" />
+          <span>New Folder</span>
+        </button>
+      )}
+
+      {/* Separator if we have new file/folder options */}
+      {isDirectory && (
+        <div className="my-1 border-t border-dark-800" />
+      )}
+
+      {/* Rename - only for files (directories not supported yet) */}
+      {!isDirectory && (
+        <button
+          onClick={() => {
+            if (canModify) {
+              onRename(file);
+              onClose();
+            }
+          }}
+          disabled={!canModify}
+          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-dark-300 hover:bg-dark-800 hover:text-dark-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-dark-300"
+          title={canModify ? "Rename this file" : "Admin access required"}
+        >
+          <PencilIcon className="w-4 h-4" />
+          <span>Rename</span>
+        </button>
+      )}
+
+      {/* Delete */}
+      <button
+        onClick={() => {
+          if (canModify) {
+            onDelete(file);
+            onClose();
+          }
+        }}
+        disabled={!canModify}
+        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-dark-800 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-red-400"
+        title={canModify ? "Delete this item" : "Admin access required"}
+      >
+        <TrashIcon className="w-4 h-4" />
+        <span>Delete</span>
+      </button>
     </div>
   );
 }

@@ -250,7 +250,13 @@ export default function BotAvatar({ enableEyeTracking = false }) {
         }
         
         .teletext-message {
-          transition: opacity 0.5s ease-in-out;
+          transition: opacity 0.3s ease-in-out, color 0.3s ease-in-out;
+        }
+        
+        /* Prevent layout shift during status changes */
+        .status-text {
+          min-height: 1.25rem;
+          display: inline-block;
         }
         
         /* State classes */
@@ -303,7 +309,7 @@ export default function BotAvatar({ enableEyeTracking = false }) {
         >
           {/* Circular border with status color and heartbeat */}
           <div className={classNames(
-            "absolute inset-0 rounded-full border-4 flex items-center justify-center bg-dark-900",
+            "absolute inset-0 rounded-full border-4 flex items-center justify-center bg-dark-900 transition-colors duration-300",
             activityStatus === 'Offline' ? 'border-red-500 ring-heartbeat-offline' : 
             activityStatus === 'Working' ? 'border-yellow-500 ring-heartbeat-working' : 
             'border-green-500 ring-heartbeat-idle'
@@ -492,20 +498,22 @@ export default function BotAvatar({ enableEyeTracking = false }) {
         
         {/* Status only - removed redundant mood */}
         <div className={classNames(
-          'text-sm font-medium',
+          'text-sm font-medium transition-colors duration-300',
           activityStatus === 'Offline' ? 'text-red-400' :
           activityStatus === 'Working' ? 'text-yellow-400' :
           'text-green-400'
         )}>
-          {activityStatus === 'Offline' ? 'Offline' :
-           inflightRequests > 0 ? `${inflightRequests} task${inflightRequests > 1 ? 's' : ''} active` : 'Online'}
+          <span className="transition-opacity duration-300">
+            {activityStatus === 'Offline' ? 'Offline' :
+             inflightRequests > 0 ? `${inflightRequests} task${inflightRequests > 1 ? 's' : ''} active` : 'Online'}
+          </span>
         </div>
       </div>
 
       {/* Teletext Style Status Bar */}
       <div
         className={classNames(
-          'w-full px-4 py-3 rounded-lg text-xs font-bold transition-all duration-500',
+          'w-full px-4 py-3 rounded-lg text-xs font-bold transition-all duration-300',
           'teletext-display',
           'bg-dark-800/80 border-2 border-dark-700/50 backdrop-blur-sm'
         )}
@@ -516,7 +524,7 @@ export default function BotAvatar({ enableEyeTracking = false }) {
       >
         <div className="flex items-center justify-between">
           <span className="select-none opacity-60">■</span>
-          <span className="flex-1 text-center px-2 teletext-message">
+          <span className="flex-1 text-center px-2 teletext-message status-text">
             {getStatusMessage()}
           </span>
           <span className="select-none opacity-60">■</span>

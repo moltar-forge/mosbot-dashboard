@@ -44,6 +44,7 @@ export const useBotStore = create((set, get) => ({
   lastSuccessAt: null,
   isConnected: true, // Bot connection status (will be controlled by openclaw integration)
   healthCheckInterval: null, // Interval ID for health checks
+  connectionStableTimer: null, // Timer to stabilize connection state changes
   
   // Mood state (activity-driven only)
   currentMood: MOODS.CALM,
@@ -148,11 +149,36 @@ export const useBotStore = create((set, get) => ({
     try {
       const response = await api.get('/openclaw/workspace/status');
       const isHealthy = response.data?.data?.accessible === true;
-      set({ isConnected: isHealthy });
+      const currentState = get();
+      
+      // Only update if the state actually changed to prevent unnecessary re-renders
+      if (currentState.isConnected !== isHealthy) {
+        // Clear any pending stabilization timer
+        if (currentState.connectionStableTimer) {
+          clearTimeout(currentState.connectionStableTimer);
+        }
+        
+        // For going offline, apply immediately (user should know right away)
+        // For going online, add a small delay to ensure it's stable
+        if (!isHealthy) {
+          set({ isConnected: false, connectionStableTimer: null });
+        } else {
+          // Wait 1 second before marking as online to ensure stability
+          const timer = setTimeout(() => {
+            set({ isConnected: true, connectionStableTimer: null });
+          }, 1000);
+          set({ connectionStableTimer: timer });
+        }
+      }
       return isHealthy;
     } catch (error) {
       logger.warn('OpenClaw health check failed', { error: error.message });
-      set({ isConnected: false });
+      const currentState = get();
+      
+      // Only update if currently showing as connected
+      if (currentState.isConnected) {
+        set({ isConnected: false });
+      }
       return false;
     }
   },
@@ -197,7 +223,10 @@ export const useBotStore = create((set, get) => ({
     if (state.healthCheckInterval) {
       clearInterval(state.healthCheckInterval);
     }
-    set({ moodTimers: {}, healthCheckInterval: null });
+    if (state.connectionStableTimer) {
+      clearTimeout(state.connectionStableTimer);
+    }
+    set({ moodTimers: {}, healthCheckInterval: null, connectionStableTimer: null });
   },
   
   // Computed properties

@@ -258,28 +258,26 @@ export default function WorkspaceExplorer() {
           
           {/* Right: Controls */}
           <div className="flex items-center gap-2">
-            {/* CRUD buttons (admin/owner only) */}
-            {canModify && (
-              <>
-                <button
-                  onClick={() => handleNewFile(null)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors"
-                  title="Create new file"
-                >
-                  <DocumentPlusIcon className="w-4 h-4" />
-                  <span>New File</span>
-                </button>
-                <button
-                  onClick={() => handleNewFolder(null)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors"
-                  title="Create new folder"
-                >
-                  <FolderPlusIcon className="w-4 h-4" />
-                  <span>New Folder</span>
-                </button>
-                <div className="w-px h-6 bg-dark-700" />
-              </>
-            )}
+            {/* CRUD buttons - visible to all, disabled for non-admin */}
+            <button
+              onClick={() => handleNewFile(null)}
+              disabled={!canModify}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-600"
+              title={canModify ? "Create new file" : "Admin access required to create files"}
+            >
+              <DocumentPlusIcon className="w-4 h-4" />
+              <span>New File</span>
+            </button>
+            <button
+              onClick={() => handleNewFolder(null)}
+              disabled={!canModify}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-600"
+              title={canModify ? "Create new folder" : "Admin access required to create folders"}
+            >
+              <FolderPlusIcon className="w-4 h-4" />
+              <span>New Folder</span>
+            </button>
+            <div className="w-px h-6 bg-dark-700" />
             
             {/* Search */}
             <div className="relative">
