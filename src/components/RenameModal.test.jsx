@@ -19,6 +19,7 @@ describe('RenameModal', () => {
   const mockCreateFile = vi.fn();
   const mockDeleteFile = vi.fn();
   const mockFetchFileContent = vi.fn();
+  const mockFetchListing = vi.fn();
   const mockShowToast = vi.fn();
 
   beforeEach(() => {
@@ -27,6 +28,7 @@ describe('RenameModal', () => {
       createFile: mockCreateFile,
       deleteFile: mockDeleteFile,
       fetchFileContent: mockFetchFileContent,
+      fetchListing: mockFetchListing,
     });
     useToastStore.mockReturnValue({
       showToast: mockShowToast,
@@ -85,6 +87,7 @@ describe('RenameModal', () => {
     mockFetchFileContent.mockResolvedValue({ content: 'file content', encoding: 'utf8' });
     mockCreateFile.mockResolvedValue({});
     mockDeleteFile.mockResolvedValue({});
+    mockFetchListing.mockResolvedValue({});
 
     render(
       <RenameModal isOpen={true} onClose={mockOnClose} file={file} />
@@ -109,6 +112,7 @@ describe('RenameModal', () => {
         encoding: 'utf8',
       });
       expect(mockDeleteFile).toHaveBeenCalledWith({ path: '/old.txt' });
+      expect(mockFetchListing).toHaveBeenCalled();
       expect(mockShowToast).toHaveBeenCalledWith('File renamed to "new.txt"', 'success');
       expect(mockOnClose).toHaveBeenCalled();
     });
@@ -250,6 +254,7 @@ describe('RenameModal', () => {
     mockFetchFileContent.mockResolvedValue({ content: 'content', encoding: 'utf8' });
     mockCreateFile.mockResolvedValue({});
     mockDeleteFile.mockResolvedValue({});
+    mockFetchListing.mockResolvedValue({});
 
     render(
       <RenameModal isOpen={true} onClose={mockOnClose} file={file} />

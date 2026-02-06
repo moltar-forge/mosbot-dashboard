@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import { useWorkspaceStore } from '../stores/workspaceStore';
@@ -17,12 +17,14 @@ vi.mock('../stores/toastStore', () => ({
 describe('DeleteConfirmModal', () => {
   const mockOnClose = vi.fn();
   const mockDeleteFile = vi.fn();
+  const mockFetchListing = vi.fn();
   const mockShowToast = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
     useWorkspaceStore.mockReturnValue({
       deleteFile: mockDeleteFile,
+      fetchListing: mockFetchListing,
     });
     useToastStore.mockReturnValue({
       showToast: mockShowToast,
@@ -126,6 +128,7 @@ describe('DeleteConfirmModal', () => {
     const user = userEvent.setup();
     const file = { name: 'test.txt', path: '/test.txt', type: 'file' };
     mockDeleteFile.mockResolvedValue({});
+    mockFetchListing.mockResolvedValue({});
 
     render(
       <DeleteConfirmModal isOpen={true} onClose={mockOnClose} file={file} />
@@ -134,18 +137,22 @@ describe('DeleteConfirmModal', () => {
     const deleteButton = screen.getByText('Delete');
     await user.click(deleteButton);
 
-    expect(mockDeleteFile).toHaveBeenCalledWith({ path: '/test.txt' });
-    expect(mockShowToast).toHaveBeenCalledWith(
-      'File "test.txt" deleted successfully',
-      'success'
-    );
-    expect(mockOnClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(mockDeleteFile).toHaveBeenCalledWith({ path: '/test.txt' });
+      expect(mockFetchListing).toHaveBeenCalled();
+      expect(mockShowToast).toHaveBeenCalledWith(
+        'File "test.txt" deleted successfully',
+        'success'
+      );
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('deletes folder and shows success toast', async () => {
     const user = userEvent.setup();
     const file = { name: 'folder', path: '/folder', type: 'directory' };
     mockDeleteFile.mockResolvedValue({});
+    mockFetchListing.mockResolvedValue({});
 
     render(
       <DeleteConfirmModal isOpen={true} onClose={mockOnClose} file={file} />
@@ -154,11 +161,14 @@ describe('DeleteConfirmModal', () => {
     const deleteButton = screen.getByText('Delete');
     await user.click(deleteButton);
 
-    expect(mockDeleteFile).toHaveBeenCalledWith({ path: '/folder' });
-    expect(mockShowToast).toHaveBeenCalledWith(
-      'Folder "folder" deleted successfully',
-      'success'
-    );
+    await waitFor(() => {
+      expect(mockDeleteFile).toHaveBeenCalledWith({ path: '/folder' });
+      expect(mockFetchListing).toHaveBeenCalled();
+      expect(mockShowToast).toHaveBeenCalledWith(
+        'Folder "folder" deleted successfully',
+        'success'
+      );
+    });
   });
 
   it('shows error toast on delete failure', async () => {
