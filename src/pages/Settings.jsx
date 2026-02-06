@@ -183,6 +183,7 @@ export default function Settings() {
                     <thead>
                       <tr className="border-b border-dark-800">
                         <th className="text-left text-sm font-medium text-dark-400 pb-3 px-4">Name</th>
+                        <th className="text-left text-sm font-medium text-dark-400 pb-3 px-4">ID</th>
                         <th className="text-left text-sm font-medium text-dark-400 pb-3 px-4">Email</th>
                         <th className="text-left text-sm font-medium text-dark-400 pb-3 px-4">Role</th>
                         <th className="text-left text-sm font-medium text-dark-400 pb-3 px-4">Status</th>
@@ -203,6 +204,7 @@ export default function Settings() {
                               <span className="text-dark-100">{user.name}</span>
                             </div>
                           </td>
+                          <td className="py-3 px-4 text-dark-400 text-sm font-mono">{user.id}</td>
                           <td className="py-3 px-4 text-dark-300">{user.email}</td>
                           <td className="py-3 px-4">
                             <span

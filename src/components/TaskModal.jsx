@@ -18,6 +18,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { useTaskStore } from '../stores/taskStore';
 import { useActivityStore } from '../stores/activityStore';
+import { useAuthStore } from '../stores/authStore';
 import logger from '../utils/logger';
 import { useToastStore } from '../stores/toastStore';
 import { TASK_STATUS, TASK_PRIORITY, TASK_TYPE, PRIORITY_CONFIG, STATUS_CONFIG, TASK_TYPE_CONFIG } from '../utils/constants';
@@ -28,6 +29,7 @@ import { format } from 'date-fns';
 export default function TaskModal({ isOpen, onClose, task = null }) {
   const { createTask, updateTask, deleteTask, fetchTaskHistory } = useTaskStore();
   const { fetchTaskActivity } = useActivityStore();
+  const { user: currentUser } = useAuthStore();
   const { showToast } = useToastStore();
   
   // Preserve the task internally to prevent glitches during modal close animation
@@ -41,6 +43,17 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   
+  // Comments data
+  const [comments, setComments] = useState([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentBody, setEditingCommentBody] = useState('');
+  const [isUpdatingComment, setIsUpdatingComment] = useState(false);
+  const [isDeletingCommentId, setIsDeletingCommentId] = useState(null);
+
   // Activity data
   const [activity, setActivity] = useState([]);
   const [loadingActivity, setLoadingActivity] = useState(false);
@@ -122,6 +135,26 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
     }
   }, []);
 
+  const loadComments = async (taskId, { force = false } = {}) => {
+    // Don't reload if already loaded
+    if (!force && commentsLoaded) return;
+
+    setLoadingComments(true);
+    try {
+      const response = await api.get(`/tasks/${taskId}/comments`);
+      setComments(response.data.data || []);
+      setCommentsLoaded(true);
+    } catch (error) {
+      logger.error('Failed to load comments', error);
+      showToast(
+        error.response?.data?.error?.message || 'Failed to load comments',
+        'error'
+      );
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
   useEffect(() => {
     // Only update internal task and form when modal opens
     if (isOpen) {
@@ -165,9 +198,15 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
         // Reset loaded flags when opening a new task
         setHistoryLoaded(false);
         setActivityLoaded(false);
+        setCommentsLoaded(false);
+        setComments([]);
+        setCommentDraft('');
         
         // Don't fetch history and activity immediately - wait for tab click
         // This improves performance by only loading data when needed
+
+        // Comments are the default tab, so load them immediately in view mode
+        loadComments(task.id, { force: true });
       } else {
         setTags([]);
         setTagInput('');
@@ -183,8 +222,11 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
         });
         setHistory([]);
         setActivity([]);
+        setComments([]);
+        setCommentDraft('');
         setHistoryLoaded(false);
         setActivityLoaded(false);
+        setCommentsLoaded(false);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -200,7 +242,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
       setHistory(historyData);
       setHistoryLoaded(true);
     } catch (error) {
-      console.error('Failed to load history:', error);
+      logger.error('Failed to load history', error);
     } finally {
       setLoadingHistory(false);
     }
@@ -216,7 +258,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
       setActivity(activityData);
       setActivityLoaded(true);
     } catch (error) {
-      console.error('Failed to load activity:', error);
+      logger.error('Failed to load activity', error);
     } finally {
       setLoadingActivity(false);
     }
@@ -230,12 +272,116 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
     if (!internalTask || mode !== 'view') return;
     
     // Tab indices: 0 = Comments, 1 = History, 2 = Activity
-    if (index === 1 && !historyLoaded) {
+    if (index === 0 && !commentsLoaded) {
+      loadComments(internalTask.id);
+    } else if (index === 1 && !historyLoaded) {
       // History tab clicked - load history
       loadHistory(internalTask.id);
     } else if (index === 2 && !activityLoaded) {
       // Activity tab clicked - load activity
       loadActivity(internalTask.id);
+    }
+  };
+
+  const handlePostComment = async () => {
+    if (!internalTask || mode !== 'view') return;
+    if (isPostingComment) return;
+
+    const body = commentDraft.trim();
+    if (!body) {
+      showToast('Comment cannot be empty', 'error');
+      return;
+    }
+
+    if (body.length > 5000) {
+      showToast('Comment must be 5000 characters or less', 'error');
+      return;
+    }
+
+    setIsPostingComment(true);
+    try {
+      const response = await api.post(`/tasks/${internalTask.id}/comments`, { body });
+      const newComment = response.data.data;
+
+      setComments((prev) => [...prev, newComment]);
+      setCommentDraft('');
+      setCommentsLoaded(true);
+      showToast('Comment added', 'success');
+    } catch (error) {
+      logger.error('Failed to post comment', error);
+      showToast(
+        error.response?.data?.error?.message || 'Failed to post comment',
+        'error'
+      );
+    } finally {
+      setIsPostingComment(false);
+    }
+  };
+
+  const handleEditComment = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentBody(comment.body);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditingCommentBody('');
+  };
+
+  const handleUpdateComment = async (commentId) => {
+    if (!internalTask || isUpdatingComment) return;
+
+    const body = editingCommentBody.trim();
+    if (!body) {
+      showToast('Comment cannot be empty', 'error');
+      return;
+    }
+
+    if (body.length > 5000) {
+      showToast('Comment must be 5000 characters or less', 'error');
+      return;
+    }
+
+    setIsUpdatingComment(true);
+    try {
+      const response = await api.patch(`/tasks/${internalTask.id}/comments/${commentId}`, { body });
+      const updatedComment = response.data.data;
+
+      setComments((prev) => prev.map((c) => (c.id === commentId ? updatedComment : c)));
+      setEditingCommentId(null);
+      setEditingCommentBody('');
+      showToast('Comment updated', 'success');
+    } catch (error) {
+      logger.error('Failed to update comment', error);
+      showToast(
+        error.response?.data?.error?.message || 'Failed to update comment',
+        'error'
+      );
+    } finally {
+      setIsUpdatingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!internalTask || isDeletingCommentId) return;
+
+    if (!window.confirm('Delete this comment? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsDeletingCommentId(commentId);
+    try {
+      await api.delete(`/tasks/${internalTask.id}/comments/${commentId}`);
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+      showToast('Comment deleted', 'success');
+    } catch (error) {
+      logger.error('Failed to delete comment', error);
+      showToast(
+        error.response?.data?.error?.message || 'Failed to delete comment',
+        'error'
+      );
+    } finally {
+      setIsDeletingCommentId(null);
     }
   };
 
@@ -306,7 +452,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
         onClose();
       }
     } catch (error) {
-      console.error('Failed to save task:', error);
+      logger.error('Failed to save task', error);
       showToast(
         error.response?.data?.error?.message || 'Failed to save task',
         'error'
@@ -840,9 +986,176 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                         {/* Comments Panel */}
                         <Tab.Panel>
                           <div className="space-y-4 min-h-[200px]">
-                            <div className="text-center py-12">
-                              <p className="text-dark-400">Comments feature coming soon</p>
-                            </div>
+                            {!internalTask || mode !== 'view' ? (
+                              <div className="text-center py-12">
+                                <p className="text-dark-400">Save this task to start a comment thread</p>
+                              </div>
+                            ) : (
+                              <>
+                                {/* Composer */}
+                                <div className="p-4 bg-dark-800/40 border border-dark-700/50 rounded-lg">
+                                  <label className="block text-xs font-medium text-dark-500 mb-2 uppercase tracking-wider">
+                                    Add comment
+                                  </label>
+                                  <textarea
+                                    value={commentDraft}
+                                    onChange={(e) => setCommentDraft(e.target.value)}
+                                    rows={3}
+                                    placeholder="Write a comment..."
+                                    className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-sm text-dark-100 placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
+                                  />
+                                  <div className="mt-3 flex items-center justify-between gap-3">
+                                    <p className="text-xs text-dark-500">
+                                      {commentDraft.trim().length}/5000
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={handlePostComment}
+                                      disabled={isPostingComment}
+                                      className={classNames(
+                                        'inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                                        isPostingComment
+                                          ? 'bg-dark-700 text-dark-400 cursor-not-allowed'
+                                          : 'bg-primary-600 hover:bg-primary-500 text-white'
+                                      )}
+                                    >
+                                      {isPostingComment ? (
+                                        <>
+                                          <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                          Posting...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <PlusCircleIcon className="w-4 h-4" />
+                                          Post
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* List */}
+                                {loadingComments ? (
+                                  <div className="flex items-center justify-center py-10">
+                                    <div className="inline-block w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+                                  </div>
+                                ) : comments.length === 0 ? (
+                                  <div className="text-center py-10">
+                                    <p className="text-dark-400">No comments yet</p>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                                    {comments.map((comment) => {
+                                      const isAuthor = currentUser?.id === comment.author_id;
+                                      const isAdminOrOwner = currentUser?.role === 'admin' || currentUser?.role === 'owner';
+                                      const canEdit = isAuthor || isAdminOrOwner;
+                                      const isEditing = editingCommentId === comment.id;
+
+                                      return (
+                                        <div
+                                          key={comment.id}
+                                          className="p-4 bg-dark-800/50 rounded-lg border border-dark-700/50 hover:border-dark-600/50 transition-colors"
+                                        >
+                                          <div className="flex items-start justify-between gap-3 mb-2">
+                                            <div className="min-w-0 flex-1">
+                                              <p className="text-sm font-semibold text-dark-100 truncate">
+                                                {comment.author_name || 'Unknown'}
+                                              </p>
+                                              <p className="text-xs text-dark-500">
+                                                {comment.author_email || '—'}
+                                              </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <time className="text-xs text-dark-500 whitespace-nowrap">
+                                                {comment.created_at ? formatDateTimeLocal(comment.created_at) : ''}
+                                              </time>
+                                              {canEdit && !isEditing && (
+                                                <div className="flex items-center gap-1">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleEditComment(comment)}
+                                                    className="p-1 text-dark-400 hover:text-primary-400 transition-colors"
+                                                    title="Edit comment"
+                                                  >
+                                                    <PencilIcon className="w-4 h-4" />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteComment(comment.id)}
+                                                    disabled={isDeletingCommentId === comment.id}
+                                                    className="p-1 text-dark-400 hover:text-red-400 transition-colors disabled:opacity-50"
+                                                    title="Delete comment"
+                                                  >
+                                                    {isDeletingCommentId === comment.id ? (
+                                                      <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                                    ) : (
+                                                      <TrashIcon className="w-4 h-4" />
+                                                    )}
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          {isEditing ? (
+                                            <div className="space-y-2">
+                                              <textarea
+                                                value={editingCommentBody}
+                                                onChange={(e) => setEditingCommentBody(e.target.value)}
+                                                rows={3}
+                                                className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-sm text-dark-100 placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
+                                              />
+                                              <div className="flex items-center justify-between gap-3">
+                                                <p className="text-xs text-dark-500">
+                                                  {editingCommentBody.trim().length}/5000
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                  <button
+                                                    type="button"
+                                                    onClick={handleCancelEdit}
+                                                    disabled={isUpdatingComment}
+                                                    className="px-3 py-1.5 text-sm text-dark-300 hover:text-dark-100 transition-colors disabled:opacity-50"
+                                                  >
+                                                    Cancel
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateComment(comment.id)}
+                                                    disabled={isUpdatingComment}
+                                                    className={classNames(
+                                                      'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                                                      isUpdatingComment
+                                                        ? 'bg-dark-700 text-dark-400 cursor-not-allowed'
+                                                        : 'bg-primary-600 hover:bg-primary-500 text-white'
+                                                    )}
+                                                  >
+                                                    {isUpdatingComment ? (
+                                                      <>
+                                                        <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                                        Saving...
+                                                      </>
+                                                    ) : (
+                                                      <>
+                                                        <CheckIcon className="w-4 h-4" />
+                                                        Save
+                                                      </>
+                                                    )}
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <p className="text-sm text-dark-200 whitespace-pre-wrap break-words">
+                                              {comment.body}
+                                            </p>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </div>
                         </Tab.Panel>
                         
