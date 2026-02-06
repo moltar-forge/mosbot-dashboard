@@ -55,6 +55,10 @@ export default function CreateFolderModal({ isOpen, onClose, currentPath }) {
       }
       
       await createDirectory({ path: folderPath });
+      
+      // Refetch parent directory listing to update the UI
+      await fetchListing({ path: currentPath, recursive: false, force: true });
+      
       showToast(`Folder "${trimmedName}" created successfully`, 'success');
       setFolderName('');
       onClose();

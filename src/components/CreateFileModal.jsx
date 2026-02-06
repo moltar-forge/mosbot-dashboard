@@ -78,6 +78,10 @@ export default function CreateFileModal({ isOpen, onClose, currentPath }) {
       
       await createFile({ path: filePath, content: '' });
       
+      // Refetch parent directory listing to update the UI
+      const parentPath = filePath.substring(0, filePath.lastIndexOf('/')) || '/';
+      await fetchListing({ path: parentPath, recursive: false, force: true });
+      
       // Extract just the filename for the success message
       const displayName = trimmedName.split('/').filter(Boolean).pop() || trimmedName;
       showToast(`File "${displayName}" created successfully`, 'success');

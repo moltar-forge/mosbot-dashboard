@@ -1,13 +1,13 @@
 import { useEffect, useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import ReactMarkdown from 'react-markdown';
-import { DocumentTextIcon, CodeBracketIcon, PencilIcon, CheckIcon, XMarkIcon, LockClosedIcon, ClipboardIcon } from '@heroicons/react/24/outline';
+import { DocumentTextIcon, CodeBracketIcon, PencilIcon, CheckIcon, XMarkIcon, LockClosedIcon, ClipboardIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useAuthStore } from '../stores/authStore';
 import { useToastStore } from '../stores/toastStore';
 import logger from '../utils/logger';
 
-export default function FilePreview({ file }) {
+export default function FilePreview({ file, onDelete }) {
   const { 
     fileContents, 
     isLoadingContent, 
@@ -114,6 +114,12 @@ export default function FilePreview({ file }) {
     } catch (error) {
       logger.error('Failed to copy to clipboard', error);
       showToast('Failed to copy file content', 'error');
+    }
+  };
+  
+  const handleDelete = () => {
+    if (onDelete && file) {
+      onDelete(file);
     }
   };
   
@@ -318,14 +324,24 @@ export default function FilePreview({ file }) {
                     </button>
                   </>
                 ) : (
-                  <button
-                    onClick={handleEdit}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-dark-700 text-dark-200 rounded hover:bg-dark-600 transition-colors"
-                    title="Edit file"
-                  >
-                    <PencilIcon className="w-4 h-4" />
-                    <span>Edit</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={handleEdit}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-dark-700 text-dark-200 rounded hover:bg-dark-600 transition-colors"
+                      title="Edit file"
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-dark-700 text-red-400 rounded hover:bg-dark-600 hover:text-red-300 transition-colors"
+                      title="Delete file"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                      <span>Delete</span>
+                    </button>
+                  </>
                 )}
               </>
             )}
@@ -366,4 +382,5 @@ FilePreview.propTypes = {
     path: PropTypes.string.isRequired,
     type: PropTypes.oneOf(['file', 'directory']).isRequired,
   }),
+  onDelete: PropTypes.func,
 };

@@ -5,7 +5,7 @@ import { useToastStore } from '../stores/toastStore';
 
 export default function DeleteConfirmModal({ isOpen, onClose, file }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { deleteFile } = useWorkspaceStore();
+  const { deleteFile, fetchListing } = useWorkspaceStore();
   const { showToast } = useToastStore();
 
   const handleDelete = async () => {
@@ -15,6 +15,11 @@ export default function DeleteConfirmModal({ isOpen, onClose, file }) {
     
     try {
       await deleteFile({ path: file.path });
+      
+      // Refetch parent directory listing to update the UI
+      const parentPath = file.path.substring(0, file.path.lastIndexOf('/')) || '/';
+      await fetchListing({ path: parentPath, recursive: false, force: true });
+      
       showToast(
         `${file.type === 'file' ? 'File' : 'Folder'} "${file.name}" deleted successfully`, 
         'success'

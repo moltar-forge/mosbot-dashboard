@@ -491,7 +491,7 @@ export default function WorkspaceExplorer() {
         </div>
         
         {/* Right pane: File preview */}
-        <FilePreview file={selectedFile} />
+        <FilePreview file={selectedFile} onDelete={handleDelete} />
       </div>
       
       {/* Context Menu */}

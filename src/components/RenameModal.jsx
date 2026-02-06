@@ -6,7 +6,7 @@ import { useToastStore } from '../stores/toastStore';
 export default function RenameModal({ isOpen, onClose, file }) {
   const [newName, setNewName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { createFile, deleteFile, fetchFileContent } = useWorkspaceStore();
+  const { createFile, deleteFile, fetchFileContent, fetchListing } = useWorkspaceStore();
   const { showToast } = useToastStore();
 
   useEffect(() => {
@@ -64,6 +64,17 @@ export default function RenameModal({ isOpen, onClose, file }) {
           encoding: fileContent.encoding || 'utf8'
         });
         await deleteFile({ path: file.path });
+        
+        // Refetch both parent directories to update the UI
+        const oldParentPath = file.path.substring(0, file.path.lastIndexOf('/')) || '/';
+        const newParentPath = newPath.substring(0, newPath.lastIndexOf('/')) || '/';
+        
+        // Refetch both if they're different, otherwise just one
+        await fetchListing({ path: oldParentPath, recursive: false, force: true });
+        if (oldParentPath !== newParentPath) {
+          await fetchListing({ path: newParentPath, recursive: false, force: true });
+        }
+        
         showToast(`File renamed to "${trimmedName}"`, 'success');
       } else {
         // For directories: this is more complex, show not supported message
