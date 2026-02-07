@@ -1093,7 +1093,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                     </div>
                     
                     {/* Dependencies and Relationships Section */}
-                    <div className="grid grid-cols-2 gap-4 mt-6">
+                    <div className="grid grid-cols-2 gap-4 mt-6 mb-8">
                       {/* Dependencies */}
                       <div className="bg-dark-800 p-4 rounded-lg">
                         <h3 className="text-sm font-medium text-dark-200 mb-3 flex items-center gap-2">
@@ -1875,6 +1875,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                             <option value={TASK_TYPE.FEATURE}>Feature</option>
                             <option value={TASK_TYPE.IMPROVEMENT}>Improvement</option>
                             <option value={TASK_TYPE.RESEARCH}>Research</option>
+                            <option value={TASK_TYPE.EPIC}>Epic</option>
                           </select>
                         </div>
 
