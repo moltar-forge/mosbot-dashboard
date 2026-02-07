@@ -14,6 +14,12 @@ import {
   ShareIcon,
   CheckIcon,
   BoltIcon,
+  LinkIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  SparklesIcon,
+  ArrowTrendingUpIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -38,6 +44,16 @@ import {
   classNames,
 } from "../utils/helpers";
 import { format } from "date-fns";
+
+// Icon component mapping for task types
+const ICON_MAP = {
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  SparklesIcon,
+  ArrowTrendingUpIcon,
+  MagnifyingGlassIcon,
+  BoltIcon,
+};
 
 export default function TaskModal({ isOpen, onClose, task = null }) {
   const { createTask, updateTask, deleteTask, fetchTaskHistory } =
@@ -434,14 +450,15 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
       
       showToast("Dependency added successfully", "success");
       
-      // Reload dependencies
-      setDependenciesLoaded(false);
-      await loadDependencies(internalTask.id);
-      
-      // Reset form
+      // Reset form first
       setSelectedDependencyTask("");
       setDependencyType("blocked_by");
       setShowAddDependency(false);
+      
+      // Reload dependencies - reset loaded flag and fetch fresh data
+      setDependenciesLoaded(false);
+      setLoadingDependencies(false); // Reset loading flag to allow reload
+      await loadDependencies(internalTask.id);
     } catch (error) {
       logger.error("Failed to add dependency", error);
       showToast(
@@ -1439,147 +1456,158 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                     <div className="grid grid-cols-2 gap-4 mt-6 mb-8">
                       {/* Dependencies */}
                       <div className="bg-dark-800 p-4 rounded-lg">
-                        <h3 className="text-sm font-medium text-dark-200 mb-3 flex items-center gap-2">
-                          <BoltIcon className="w-4 h-4" />
-                          Dependencies
-                        </h3>
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm font-medium text-dark-200 flex items-center gap-2">
+                            <LinkIcon className="w-4 h-4" />
+                            Dependencies
+                          </h3>
+                          {mode === "view" && !showAddDependency && (
+                            <button
+                              onClick={() => {
+                                setShowAddDependency(true);
+                                loadAvailableTasks();
+                              }}
+                              className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1"
+                            >
+                              <PlusCircleIcon className="w-3 h-3" />
+                              Add
+                            </button>
+                          )}
+                        </div>
 
-                        {/* Blocked By */}
-                        <div className="mb-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <label className="block text-xs font-medium text-dark-500">
-                              Blocked By
-                            </label>
-                            {mode === "view" && !showAddDependency && (
-                              <button
-                                onClick={() => {
-                                  setShowAddDependency(true);
-                                  loadAvailableTasks();
-                                }}
-                                className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1"
-                              >
-                                <PlusCircleIcon className="w-3 h-3" />
-                                Add
-                              </button>
-                            )}
-                          </div>
-                          
-                          {showAddDependency && (
-                            <div className="mb-2 p-2 bg-dark-900 rounded border border-dark-700">
-                              <div className="mb-2">
+                        {/* Add Dependency Form */}
+                        {showAddDependency && (
+                          <div className="mb-3 p-3 bg-dark-900 rounded border border-dark-700">
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                              <div>
                                 <label className="block text-xs font-medium text-dark-500 mb-1">
                                   Relationship Type
                                 </label>
                                 <select
                                   value={dependencyType}
                                   onChange={(e) => setDependencyType(e.target.value)}
-                                  className="input-field text-xs mb-2"
+                                  className="input-field text-xs"
                                   disabled={isAddingDependency}
                                 >
-                                  <option value="blocked_by">Blocked By (this task depends on selected task)</option>
-                                  <option value="is_blocking">Is Blocking (selected task depends on this task)</option>
+                                  <option value="blocked_by">Blocked By</option>
+                                  <option value="is_blocking">Is Blocking</option>
                                 </select>
                               </div>
-                              <select
-                                value={selectedDependencyTask}
-                                onChange={(e) => setSelectedDependencyTask(e.target.value)}
-                                className="input-field text-xs mb-2"
-                                disabled={loadingAvailableTasks || isAddingDependency}
-                              >
-                                <option value="">Select a task...</option>
-                                {availableTasks.map((task) => {
-                                  const taskTypeLabel = task.type ? TASK_TYPE_CONFIG[task.type]?.label || task.type : '';
-                                  const epicInfo = task.parent_task_number ? ` [Epic: TASK-${task.parent_task_number}]` : '';
-                                  return (
-                                    <option key={task.id} value={task.id}>
-                                      TASK-{task.task_number} - {taskTypeLabel ? `[${taskTypeLabel}] ` : ''}{task.title}{epicInfo}
-                                    </option>
-                                  );
-                                })}
-                              </select>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={handleAddDependency}
-                                  disabled={!selectedDependencyTask || isAddingDependency}
-                                  className="btn-primary text-xs py-1 px-2 flex-1"
+                              <div>
+                                <label className="block text-xs font-medium text-dark-500 mb-1">
+                                  Select Task
+                                </label>
+                                <select
+                                  value={selectedDependencyTask}
+                                  onChange={(e) => setSelectedDependencyTask(e.target.value)}
+                                  className="input-field text-xs"
+                                  disabled={loadingAvailableTasks || isAddingDependency}
                                 >
-                                  {isAddingDependency ? "Adding..." : "Add Dependency"}
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setShowAddDependency(false);
-                                    setSelectedDependencyTask("");
-                                    setDependencyType("blocked_by");
-                                  }}
-                                  className="btn-secondary text-xs py-1 px-2"
-                                  disabled={isAddingDependency}
-                                >
-                                  Cancel
-                                </button>
+                                  <option value="">Select a task...</option>
+                                  {availableTasks.map((task) => {
+                                    const taskType = task.type || TASK_TYPE.TASK;
+                                    const typeConfig = TASK_TYPE_CONFIG[taskType];
+                                    const typeIcon = typeConfig?.icon ? `${typeConfig.icon.replace('Icon', '')} ` : '';
+                                    const epicInfo = task.parent_task_number ? ` [Epic: TASK-${task.parent_task_number}]` : '';
+                                    return (
+                                      <option key={task.id} value={task.id}>
+                                        {typeConfig?.label || 'Task'} • TASK-{task.task_number} - {task.title}{epicInfo}
+                                      </option>
+                                    );
+                                  })}
+                                </select>
                               </div>
                             </div>
-                          )}
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleAddDependency}
+                                disabled={!selectedDependencyTask || isAddingDependency}
+                                className="btn-primary text-xs py-1 px-2 flex-1"
+                              >
+                                {isAddingDependency ? "Adding..." : "Add Dependency"}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowAddDependency(false);
+                                  setSelectedDependencyTask("");
+                                  setDependencyType("blocked_by");
+                                }}
+                                className="btn-secondary text-xs py-1 px-2"
+                                disabled={isAddingDependency}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Blocked By */}
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium text-dark-500 mb-1">
+                            Blocked By
+                          </label>
                           
                           {loadingDependencies ? (
                             <p className="text-xs text-dark-500">Loading...</p>
                           ) : dependencies.depends_on.length > 0 ? (
                             <div className="space-y-1">
-                              {dependencies.depends_on.map((dep) => (
-                                <div
-                                  key={dep.id}
-                                  className="text-xs text-dark-300 flex items-center gap-2 group"
-                                >
-                                  <button
-                                    onClick={async () => {
-                                      try {
-                                        const task = await useTaskStore.getState().fetchTaskById(dep.id);
-                                        onClose();
-                                        setTimeout(() => {
-                                          window.dispatchEvent(new CustomEvent('openTask', { detail: task }));
-                                        }, 100);
-                                      } catch (error) {
-                                        showToast('Failed to load task', 'error');
-                                      }
-                                    }}
-                                    className="font-mono text-primary-400 hover:text-primary-300 transition-colors cursor-pointer"
+                              {dependencies.depends_on.map((dep) => {
+                                const taskType = dep.type || TASK_TYPE.TASK;
+                                const typeConfig = TASK_TYPE_CONFIG[taskType];
+                                const TypeIcon = ICON_MAP[typeConfig?.icon];
+                                
+                                return (
+                                  <div
+                                    key={dep.id}
+                                    className="text-xs text-dark-300 flex items-center gap-2 group"
                                   >
-                                    TASK-{dep.task_number}
-                                  </button>
-                                  {dep.type && (
+                                    {TypeIcon && (
+                                      <TypeIcon 
+                                        className={classNames('w-3.5 h-3.5 flex-shrink-0', typeConfig.color)} 
+                                        title={typeConfig.label}
+                                      />
+                                    )}
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          const task = await useTaskStore.getState().fetchTaskById(dep.id);
+                                          onClose();
+                                          setTimeout(() => {
+                                            window.dispatchEvent(new CustomEvent('openTask', { detail: task }));
+                                          }, 100);
+                                        } catch (error) {
+                                          showToast('Failed to load task', 'error');
+                                        }
+                                      }}
+                                      className="font-mono text-primary-400 hover:text-primary-300 transition-colors cursor-pointer"
+                                    >
+                                      TASK-{dep.task_number}
+                                    </button>
+                                    <span className="flex-1 truncate">
+                                      {dep.title}
+                                    </span>
                                     <span
                                       className={classNames(
-                                        "px-1.5 py-0.5 rounded text-[10px] font-medium",
-                                        TASK_TYPE_CONFIG[dep.type]?.color || "text-dark-400"
+                                        "px-1.5 py-0.5 rounded text-[10px]",
+                                        STATUS_CONFIG[dep.status]?.color ||
+                                          "bg-dark-700 text-dark-300"
                                       )}
-                                      title={TASK_TYPE_CONFIG[dep.type]?.label || dep.type}
                                     >
-                                      {TASK_TYPE_CONFIG[dep.type]?.label || dep.type}
+                                      {STATUS_CONFIG[dep.status]?.label ||
+                                        dep.status}
                                     </span>
-                                  )}
-                                  <span className="flex-1 truncate">
-                                    {dep.title}
-                                  </span>
-                                  <span
-                                    className={classNames(
-                                      "px-1.5 py-0.5 rounded text-[10px]",
-                                      STATUS_CONFIG[dep.status]?.color ||
-                                        "bg-dark-700 text-dark-300"
+                                    {mode === "view" && (
+                                      <button
+                                        onClick={() => handleRemoveDependency(dep.id)}
+                                        className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity"
+                                        title="Remove dependency"
+                                      >
+                                        <XMarkIcon className="w-3 h-3" />
+                                      </button>
                                     )}
-                                  >
-                                    {STATUS_CONFIG[dep.status]?.label ||
-                                      dep.status}
-                                  </span>
-                                  {mode === "view" && (
-                                    <button
-                                      onClick={() => handleRemoveDependency(dep.id)}
-                                      className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity"
-                                      title="Remove dependency"
-                                    >
-                                      <XMarkIcon className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                </div>
-                              ))}
+                                  </div>
+                                );
+                              })}
                             </div>
                           ) : (
                             <p className="text-xs text-dark-500">
@@ -1595,43 +1623,44 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                           </label>
                           {dependencies.dependents.length > 0 ? (
                             <div className="space-y-1">
-                              {dependencies.dependents.map((dep) => (
-                                <div
-                                  key={dep.id}
-                                  className="text-xs text-dark-300 flex items-center gap-2 group"
-                                >
-                                  <button
-                                    onClick={async () => {
-                                      try {
-                                        const task = await useTaskStore.getState().fetchTaskById(dep.id);
-                                        onClose();
-                                        setTimeout(() => {
-                                          window.dispatchEvent(new CustomEvent('openTask', { detail: task }));
-                                        }, 100);
-                                      } catch (error) {
-                                        showToast('Failed to load task', 'error');
-                                      }
-                                    }}
-                                    className="font-mono text-primary-400 hover:text-primary-300 transition-colors cursor-pointer"
+                              {dependencies.dependents.map((dep) => {
+                                const taskType = dep.type || TASK_TYPE.TASK;
+                                const typeConfig = TASK_TYPE_CONFIG[taskType];
+                                const TypeIcon = ICON_MAP[typeConfig?.icon];
+                                
+                                return (
+                                  <div
+                                    key={dep.id}
+                                    className="text-xs text-dark-300 flex items-center gap-2 group"
                                   >
-                                    TASK-{dep.task_number}
-                                  </button>
-                                  {dep.type && (
-                                    <span
-                                      className={classNames(
-                                        "px-1.5 py-0.5 rounded text-[10px] font-medium",
-                                        TASK_TYPE_CONFIG[dep.type]?.color || "text-dark-400"
-                                      )}
-                                      title={TASK_TYPE_CONFIG[dep.type]?.label || dep.type}
+                                    {TypeIcon && (
+                                      <TypeIcon 
+                                        className={classNames('w-3.5 h-3.5 flex-shrink-0', typeConfig.color)} 
+                                        title={typeConfig.label}
+                                      />
+                                    )}
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          const task = await useTaskStore.getState().fetchTaskById(dep.id);
+                                          onClose();
+                                          setTimeout(() => {
+                                            window.dispatchEvent(new CustomEvent('openTask', { detail: task }));
+                                          }, 100);
+                                        } catch (error) {
+                                          showToast('Failed to load task', 'error');
+                                        }
+                                      }}
+                                      className="font-mono text-primary-400 hover:text-primary-300 transition-colors cursor-pointer"
                                     >
-                                      {TASK_TYPE_CONFIG[dep.type]?.label || dep.type}
+                                      TASK-{dep.task_number}
+                                    </button>
+                                    <span className="flex-1 truncate">
+                                      {dep.title}
                                     </span>
-                                  )}
-                                  <span className="flex-1 truncate">
-                                    {dep.title}
-                                  </span>
-                                </div>
-                              ))}
+                                  </div>
+                                );
+                              })}
                             </div>
                           ) : (
                             <p className="text-xs text-dark-500">
