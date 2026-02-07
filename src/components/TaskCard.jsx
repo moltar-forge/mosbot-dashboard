@@ -52,14 +52,15 @@ export default function TaskCard({ task, onClick }) {
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
+            {TypeIcon && (
+              <TypeIcon 
+                className={classNames('w-4 h-4 flex-shrink-0', typeConfig.color)} 
+                title={typeConfig.label}
+              />
+            )}
             {task.task_number && (
               <span className="text-xs font-mono text-dark-500">
                 TASK-{task.task_number}
-              </span>
-            )}
-            {task.parent_task_number && (
-              <span className="text-xs text-dark-600">
-                Epic: TASK-{task.parent_task_number}
               </span>
             )}
           </div>
@@ -67,11 +68,10 @@ export default function TaskCard({ task, onClick }) {
             {task.title}
           </h3>
         </div>
-        {TypeIcon && (
-          <TypeIcon 
-            className={classNames('w-5 h-5 flex-shrink-0', typeConfig.color)} 
-            title={typeConfig.label}
-          />
+        {task.parent_task_number && (
+          <span className="px-2 py-0.5 text-xs bg-primary-900/30 text-primary-400 rounded border border-primary-800 flex-shrink-0">
+            Epic: TASK-{task.parent_task_number}
+          </span>
         )}
       </div>
 

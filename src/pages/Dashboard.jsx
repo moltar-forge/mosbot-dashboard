@@ -48,6 +48,23 @@ export default function Dashboard() {
     };
   }, [refreshTasks]);
   
+  // Listen for custom openTask events (from clicking parent epic or subtasks)
+  useEffect(() => {
+    const handleOpenTask = (event) => {
+      const task = event.detail;
+      if (task) {
+        setSelectedTask(task);
+        setIsModalOpen(true);
+      }
+    };
+    
+    window.addEventListener('openTask', handleOpenTask);
+    
+    return () => {
+      window.removeEventListener('openTask', handleOpenTask);
+    };
+  }, []);
+  
   const handleRefresh = async () => {
     await fetchTasks();
   };

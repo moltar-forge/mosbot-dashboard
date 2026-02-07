@@ -1430,12 +1430,29 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                             Parent Epic
                           </label>
                           {internalTask.parent_task_id ? (
-                            <p className="text-xs text-dark-300">
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  const parentTask = await useTaskStore.getState().fetchTaskById(internalTask.parent_task_id);
+                                  // Close current modal and open parent task
+                                  onClose();
+                                  // Small delay to allow modal to close
+                                  setTimeout(() => {
+                                    // Trigger opening the parent task by updating the URL or calling parent handler
+                                    window.dispatchEvent(new CustomEvent('openTask', { detail: parentTask }));
+                                  }, 100);
+                                } catch (error) {
+                                  showToast('Failed to load parent task', 'error');
+                                }
+                              }}
+                              className="text-xs text-dark-300 hover:text-primary-400 transition-colors text-left"
+                            >
                               <span className="font-mono text-primary-400">
                                 TASK-{internalTask.parent_task_number || "?"}
                               </span>{" "}
                               {internalTask.parent_task_title || "Loading..."}
-                            </p>
+                            </button>
                           ) : (
                             <p className="text-xs text-dark-500">
                               No parent epic
@@ -1453,9 +1470,21 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                           ) : subtasks.length > 0 ? (
                             <div className="space-y-1">
                               {subtasks.map((sub) => (
-                                <div
+                                <button
                                   key={sub.id}
-                                  className="text-xs text-dark-300 flex items-center gap-2"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      const subtask = await useTaskStore.getState().fetchTaskById(sub.id);
+                                      onClose();
+                                      setTimeout(() => {
+                                        window.dispatchEvent(new CustomEvent('openTask', { detail: subtask }));
+                                      }, 100);
+                                    } catch (error) {
+                                      showToast('Failed to load subtask', 'error');
+                                    }
+                                  }}
+                                  className="text-xs text-dark-300 hover:text-primary-400 transition-colors flex items-center gap-2 w-full text-left"
                                 >
                                   <span className="font-mono text-primary-400">
                                     TASK-{sub.task_number}
@@ -1473,7 +1502,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                     {STATUS_CONFIG[sub.status]?.label ||
                                       sub.status}
                                   </span>
-                                </div>
+                                </button>
                               ))}
                             </div>
                           ) : (
