@@ -30,7 +30,7 @@ Always show loading indicators for async operations:
       {/* Spinner SVG */}
     </svg>
   )}
-  {isSubmitting ? 'Updating...' : 'Update'}
+  {isSubmitting ? "Updating..." : "Update"}
 </button>
 
 // Full-screen overlay for forms
@@ -56,18 +56,18 @@ Always show loading indicators for async operations:
 Use `useToastStore` for user feedback:
 
 ```jsx
-import { useToastStore } from '../stores/toastStore';
+import { useToastStore } from "../stores/toastStore";
 
 const { showToast } = useToastStore();
 
 // Success
-showToast('Task updated successfully', 'success');
+showToast("Task updated successfully", "success");
 
 // Error
-showToast('Failed to save task', 'error');
+showToast("Failed to save task", "error");
 
 // Info
-showToast('Processing your request', 'info');
+showToast("Processing your request", "info");
 ```
 
 **When to use toasts**:
@@ -163,9 +163,9 @@ const handleSubmit = async (e) => {
   
   try {
     await saveData();
-    showToast('Saved successfully', 'success');
+    showToast("Saved successfully", "success");
   } catch (error) {
-    showToast(error.message, 'error');
+    showToast(error.message, "error");
   } finally {
     setIsSubmitting(false);
   }

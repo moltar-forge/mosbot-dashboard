@@ -1,0 +1,24 @@
+---
+description: Code formatting and style conventions
+alwaysApply: false
+---
+
+# Code Style Conventions
+
+## Quote Style
+
+- **Use double quotes** (`"`) for all string literals in JavaScript/JSX code
+- This matches Prettier's default configuration and the existing codebase
+- Applies to:
+  - String literals: `"text"` not `'text'`
+  - Import paths: `from "../stores/toastStore"` not `from '../stores/toastStore'`
+  - API endpoints: `api.get("/endpoint")` not `api.get('/endpoint')`
+  - Function arguments: `showToast("message", "type")` not `showToast('message', 'type')`
+- **Note**: Single quotes in prose text (like "don't", "what's") are fine in markdown documentation
+
+## Code Examples in Rules
+
+When writing code examples in `.mdc` rule files:
+- Use double quotes for all JavaScript/JSX string literals
+- Match the formatting style of the actual codebase
+- Ensure examples can be copy-pasted and will pass Prettier formatting
