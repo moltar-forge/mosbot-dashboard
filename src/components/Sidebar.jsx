@@ -27,7 +27,7 @@ const navigation = [
   { name: 'Archived', href: '/archived', icon: ArchiveBoxIcon },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ onCloseMobile }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -36,6 +36,7 @@ export default function Sidebar() {
   const handleLogout = () => {
     logout();
     navigate('/login');
+    onCloseMobile?.();
   };
 
   const toggleExpanded = (itemName) => {
@@ -104,6 +105,7 @@ export default function Sidebar() {
                             <Link
                               key={subpage.name}
                               to={subpage.href}
+                              onClick={onCloseMobile}
                               className={classNames(
                                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200',
                                 isSubActive
@@ -122,6 +124,7 @@ export default function Sidebar() {
                 ) : (
                   <Link
                     to={item.href}
+                    onClick={onCloseMobile}
                     className={classNames(
                       'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200',
                       isActive

@@ -160,7 +160,12 @@ describe('ToastContainer', () => {
 
     const { container } = render(<ToastContainer />);
 
-    const containerElement = container.querySelector('.fixed.bottom-4.right-4');
+    // Check for the fixed positioning and bottom-4, with responsive classes
+    const containerElement = container.querySelector('.fixed.bottom-4');
     expect(containerElement).toBeInTheDocument();
+    // Verify it has the responsive positioning classes
+    expect(containerElement).toHaveClass('inset-x-4');
+    expect(containerElement).toHaveClass('sm:left-auto');
+    expect(containerElement).toHaveClass('sm:right-4');
   });
 });

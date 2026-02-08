@@ -12,8 +12,7 @@ import remarkBreaks from "remark-breaks";
  * @param {string} className - Additional CSS classes for the wrapper
  */
 const MarkdownRenderer = ({ content, size = "sm", className = "" }) => {
-  const isSmall = size === "sm";
-  const isExtraSmall = size === "xs";
+q  const isExtraSmall = size === "xs";
 
   // Base text size classes
   const textSize = isExtraSmall ? "text-xs" : "text-sm";
@@ -58,21 +57,50 @@ const MarkdownRenderer = ({ content, size = "sm", className = "" }) => {
     ),
 
     // Lists
-    ul: ({ _node, ...props }) => (
-      <ul
-        className={`list-disc list-inside ${textSize} text-dark-200 mb-2 space-y-1 last:mb-0`}
-        {...props}
-      />
-    ),
-    ol: ({ _node, ...props }) => (
-      <ol
-        className={`list-decimal list-inside ${textSize} text-dark-200 mb-2 space-y-1 last:mb-0`}
-        {...props}
-      />
-    ),
-    li: ({ _node, ...props }) => (
-      <li className={`${textSize} text-dark-200`} {...props} />
-    ),
+    ul: ({ _node, ...props }) => {
+      // Use list-outside for better nested list support
+      // Check if this is nested by examining parent structure
+      let depth = 0;
+      let parent = _node?.parent;
+      while (parent) {
+        if (parent.type === 'listItem') depth++;
+        parent = parent.parent;
+      }
+      // Use consistent margin - nested lists will inherit proper spacing
+      const baseClasses = 'list-disc list-outside ml-6';
+      const nestedClasses = depth > 0 ? 'mt-1' : '';
+      return (
+        <ul
+          className={`${baseClasses} ${nestedClasses} ${textSize} text-dark-200 mb-2 space-y-1 last:mb-0`}
+          {...props}
+        />
+      );
+    },
+    ol: ({ _node, ...props }) => {
+      // Use list-outside for better nested list support
+      // Check if this is nested by examining parent structure
+      let depth = 0;
+      let parent = _node?.parent;
+      while (parent) {
+        if (parent.type === 'listItem') depth++;
+        parent = parent.parent;
+      }
+      // Use consistent margin - nested lists will inherit proper spacing
+      const baseClasses = 'list-decimal list-outside ml-6';
+      const nestedClasses = depth > 0 ? 'mt-1' : '';
+      return (
+        <ol
+          className={`${baseClasses} ${nestedClasses} ${textSize} text-dark-200 mb-2 space-y-1 last:mb-0`}
+          {...props}
+        />
+      );
+    },
+    li: ({ _node, ...props }) => {
+      // Ensure list items can contain nested lists properly
+      return (
+        <li className={`${textSize} text-dark-200`} {...props} />
+      );
+    },
 
     // Code
     code: ({ _node, inline, ...props }) =>

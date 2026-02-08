@@ -1150,7 +1150,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="flex min-h-full items-start md:items-center justify-center p-0 md:p-4">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -1160,11 +1160,11 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-6xl transform overflow-hidden rounded-lg bg-dark-900 border border-dark-800 p-6 shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-full md:max-w-6xl transform overflow-hidden md:rounded-lg bg-dark-900 border-0 md:border border-dark-800 p-4 md:p-6 shadow-xl transition-all min-h-screen md:min-h-0">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex-1 min-w-0 mr-4">
-                    <Dialog.Title className="text-xl font-semibold text-dark-100">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 md:mb-6">
+                  <div className="flex-1 min-w-0">
+                    <Dialog.Title className="text-lg md:text-xl font-semibold text-dark-100">
                       {internalTask
                         ? mode === "view"
                           ? formData.title
@@ -1179,7 +1179,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                         </p>
                       )}
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     {internalTask && mode === "view" && (
                       <button
                         onClick={handleShare}
@@ -1189,12 +1189,12 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                         {copied ? (
                           <>
                             <CheckIcon className="w-4 h-4 text-green-500" />
-                            <span className="text-green-500">Copied!</span>
+                            <span className="hidden sm:inline text-green-500">Copied!</span>
                           </>
                         ) : (
                           <>
                             <ShareIcon className="w-4 h-4" />
-                            Share
+                            <span className="hidden sm:inline">Share</span>
                           </>
                         )}
                       </button>
@@ -1207,7 +1207,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                           className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors text-sm"
                         >
                           <PencilIcon className="w-4 h-4" />
-                          Edit
+                          <span className="hidden sm:inline">Edit</span>
                         </button>
                       )}
                     <button
@@ -1223,11 +1223,11 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                 {mode === "view" && internalTask && (
                   <>
                     {/* Main Content */}
-                    <div className="space-y-6 mb-6">
+                    <div className="space-y-4 md:space-y-6 mb-4 md:mb-6">
                       {/* Description and Metadata - Side by Side */}
-                      <div className="grid grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                         {/* Main Column - Description */}
-                        <div className="col-span-2">
+                        <div className="md:col-span-2">
                           {formData.description && (
                             <div>
                               <label className="block text-sm font-medium text-dark-400 mb-2">
@@ -2271,9 +2271,9 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                       </div>
                     )}
 
-                    <div className="grid grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                       {/* Main Column - Title and Description */}
-                      <div className="col-span-2 space-y-4">
+                      <div className="md:col-span-2 space-y-4">
                         {/* Title */}
                         <div>
                           <label

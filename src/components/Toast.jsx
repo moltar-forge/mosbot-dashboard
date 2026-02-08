@@ -38,7 +38,7 @@ export default function Toast({ show, message, type = 'success', onClose }) {
       leaveFrom="opacity-100"
       leaveTo="opacity-0"
     >
-      <div className={`pointer-events-auto min-w-[300px] max-w-sm overflow-hidden rounded-lg border ${config.borderColor} ${config.bgColor} shadow-lg backdrop-blur-sm`}>
+      <div className={`pointer-events-auto w-full sm:min-w-[300px] sm:max-w-sm overflow-hidden rounded-lg border ${config.borderColor} ${config.bgColor} shadow-lg backdrop-blur-sm`}>
         <div className="p-4">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
