@@ -21,29 +21,35 @@ const MarkdownRenderer = ({ content, size = "sm", className = "" }) => {
   // Component styles based on size
   const components = {
     // Headings
-    h1: ({ _node, ...props }) => (
+    h1: ({ _node, children, ...props }) => (
       <h1
         className={`font-bold text-dark-100 ${
           isExtraSmall ? "text-base mt-2 mb-1" : "text-2xl mt-4 mb-2"
         }`}
         {...props}
-      />
+      >
+        {children}
+      </h1>
     ),
-    h2: ({ _node, ...props }) => (
+    h2: ({ _node, children, ...props }) => (
       <h2
         className={`font-semibold text-dark-100 ${
           isExtraSmall ? "text-sm mt-2 mb-1" : "text-xl mt-3 mb-2"
         }`}
         {...props}
-      />
+      >
+        {children}
+      </h2>
     ),
-    h3: ({ _node, ...props }) => (
+    h3: ({ _node, children, ...props }) => (
       <h3
         className={`font-semibold text-dark-100 ${
           isExtraSmall ? "text-xs mt-2 mb-1" : "text-lg mt-3 mb-2"
         }`}
         {...props}
-      />
+      >
+        {children}
+      </h3>
     ),
 
     // Paragraphs
@@ -144,12 +150,18 @@ const MarkdownRenderer = ({ content, size = "sm", className = "" }) => {
     ),
 
     // Links
-    a: ({ _node, ...props }) => (
-      <a
-        className="text-primary-400 hover:text-primary-300 underline"
-        {...props}
-      />
-    ),
+    a: ({ _node, children, ...props }) => {
+      // Handle links that contain mixed content (text + code)
+      // Preserve existing components when they appear inside links
+      return (
+        <a
+          className="text-primary-400 hover:text-primary-300 underline"
+          {...props}
+        >
+          {children}
+        </a>
+      );
+    },
 
     // Tables
     table: ({ _node, ...props }) => (
