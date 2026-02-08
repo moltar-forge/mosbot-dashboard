@@ -2,9 +2,11 @@ import { useEffect, useState, Suspense, lazy } from 'react';
 import { useLocation } from 'react-router-dom';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { Bars3Icon } from '@heroicons/react/24/outline';
 import { api } from '../api/client';
 import { useTaskStore } from '../stores/taskStore';
 import TaskCard from '../components/TaskCard';
+import { useMobileNav } from '../components/MobileNavContext';
 import logger from '../utils/logger';
 
 const TaskModal = lazy(() => import('../components/TaskModal'));
@@ -12,6 +14,7 @@ const TaskModal = lazy(() => import('../components/TaskModal'));
 export default function Archived() {
   const location = useLocation();
   const { isLoading, error } = useTaskStore();
+  const onOpenNav = useMobileNav();
   const [archivedTasks, setArchivedTasks] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -71,10 +74,22 @@ export default function Archived() {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between px-6 py-4 bg-dark-900 border-b border-dark-800">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-bold text-dark-100">Archived Tasks</h1>
-            <p className="text-sm text-dark-500">View and restore completed tasks that have been archived</p>
+        <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6 md:py-4 bg-dark-900 border-b border-dark-800">
+          <div className="flex items-center gap-3">
+            {onOpenNav && (
+              <button
+                type="button"
+                className="md:hidden p-2 -ml-2 rounded-lg text-dark-300 hover:text-dark-100 hover:bg-dark-800 transition-colors"
+                onClick={onOpenNav}
+              >
+                <span className="sr-only">Open sidebar</span>
+                <Bars3Icon className="h-6 w-6" aria-hidden="true" />
+              </button>
+            )}
+            <div className="flex flex-col gap-1">
+              <h1 className="text-xl md:text-2xl font-bold text-dark-100">Archived Tasks</h1>
+              <p className="text-sm text-dark-500">View and restore completed tasks that have been archived</p>
+            </div>
           </div>
           <button
             onClick={fetchArchivedTasks}
@@ -97,7 +112,7 @@ export default function Archived() {
           </button>
         </div>
         
-        <div className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 p-3 md:p-6 overflow-y-auto">
           {isRefreshing && archivedTasks.length === 0 ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">

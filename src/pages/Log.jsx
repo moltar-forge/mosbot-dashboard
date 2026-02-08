@@ -198,7 +198,7 @@ export default function Log() {
         subtitle={`A chronological record of the bot's actions and completed tasks • ${displayLogs.length} ${displayLogs.length === 1 ? 'entry' : 'entries'}`}
       />
       
-      <div className="flex-1 p-6 overflow-y-auto bg-dark-950">
+      <div className="flex-1 p-3 md:p-6 overflow-y-auto bg-dark-950">
         <div className="max-w-5xl mx-auto">
           {isLoading ? (
             <div className="card p-12 text-center">

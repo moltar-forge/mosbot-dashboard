@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { PlusIcon, MagnifyingGlassIcon, ArrowPathIcon, Bars3Icon } from '@heroicons/react/24/outline';
 import { useTaskStore } from '../stores/taskStore';
+import { useMobileNav } from './MobileNavContext';
 
-export default function Header({ title, subtitle, onCreateTask, onRefresh, searchValue, onSearchChange, onOpenNav }) {
+export default function Header({ title, subtitle, onCreateTask, onRefresh, searchValue, onSearchChange }) {
+  const onOpenNav = useMobileNav();
   const { isRefreshing, lastFetchedAt } = useTaskStore();
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   

@@ -117,7 +117,7 @@ export default function Dashboard() {
         onSearchChange={setSearchQuery}
       />
       
-      <div className="flex-1 p-6 overflow-hidden">
+      <div className="flex-1 p-3 md:p-6 overflow-hidden">
         <KanbanBoard onTaskClick={handleTaskClick} />
       </div>
 

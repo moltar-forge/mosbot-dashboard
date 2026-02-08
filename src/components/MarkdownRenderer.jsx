@@ -106,21 +106,21 @@ const MarkdownRenderer = ({ content, size = "sm", className = "" }) => {
       );
     },
 
-    // Code
-    code: ({ _node, inline, ...props }) =>
-      inline ? (
-        <code
-          className={`inline bg-dark-900 px-1.5 py-0.5 rounded text-primary-400 ${textSize} font-mono whitespace-nowrap`}
-          {...props}
-        />
-      ) : (
-        <code
-          className={`block bg-dark-900 p-3 rounded text-primary-400 ${textSize} font-mono overflow-x-auto mb-2`}
-          {...props}
-        />
-      ),
+    // Code - in react-markdown v10+, the `inline` prop was removed.
+    // Inline backticks render as bare <code>; fenced blocks render as <pre><code>.
+    // Always style <code> as inline; <pre> handles block-level wrapping.
+    code: ({ _node, ...props }) => (
+      <code
+        className={`bg-dark-900 px-1.5 py-0.5 rounded text-primary-400 ${textSize} font-mono whitespace-nowrap`}
+        {...props}
+      />
+    ),
+    // Pre wraps fenced code blocks - provides block-level styling
     pre: ({ _node, ...props }) => (
-      <pre className="bg-dark-900 p-3 rounded overflow-x-auto mb-2" {...props} />
+      <pre
+        className={`bg-dark-900 p-3 rounded text-primary-400 ${textSize} font-mono overflow-x-auto mb-2 [&>code]:p-0 [&>code]:whitespace-pre`}
+        {...props}
+      />
     ),
 
     // Blockquote

@@ -9,7 +9,7 @@ export default function Workspace() {
         subtitle="Browse and preview workspace files"
       />
       
-      <div className="flex-1 flex flex-col p-6 overflow-hidden">
+      <div className="flex-1 flex flex-col p-3 md:p-6 overflow-hidden">
         <WorkspaceExplorer />
       </div>
     </div>

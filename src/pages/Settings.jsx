@@ -1,18 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { UserPlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { UserPlusIcon, PencilIcon, TrashIcon, Bars3Icon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../stores/authStore';
 import { useToastStore } from '../stores/toastStore';
 import { api } from '../api/client';
 import logger from '../utils/logger';
 import UserModal from '../components/UserModal';
 import UserDeleteConfirmModal from '../components/UserDeleteConfirmModal';
+import { useMobileNav } from '../components/MobileNavContext';
 
 export default function Settings() {
   const { user: currentUser, isAdmin } = useAuthStore();
   const { showToast } = useToastStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const onOpenNav = useMobileNav();
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -133,15 +135,27 @@ export default function Settings() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 bg-dark-900 border-b border-dark-800">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-dark-100">Settings</h1>
-          <p className="text-sm text-dark-500">Manage users and system configuration</p>
+      <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 bg-dark-900 border-b border-dark-800">
+        <div className="flex items-center gap-3">
+          {onOpenNav && (
+            <button
+              type="button"
+              className="md:hidden p-2 -ml-2 rounded-lg text-dark-300 hover:text-dark-100 hover:bg-dark-800 transition-colors"
+              onClick={onOpenNav}
+            >
+              <span className="sr-only">Open sidebar</span>
+              <Bars3Icon className="h-6 w-6" aria-hidden="true" />
+            </button>
+          )}
+          <div className="flex flex-col gap-1">
+            <h1 className="text-xl md:text-2xl font-bold text-dark-100">Settings</h1>
+            <p className="text-sm text-dark-500">Manage users and system configuration</p>
+          </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 p-3 md:p-6 overflow-y-auto">
         {location.pathname === '/settings/users' && (
           <>
             {error && (
