@@ -10,8 +10,10 @@ import remarkBreaks from "remark-breaks";
  * @param {string} content - The markdown content to render
  * @param {string} size - Size variant: "sm" (default), "xs" (smaller text)
  * @param {string} className - Additional CSS classes for the wrapper
+ * @param {boolean} breaks - Whether to convert soft line breaks to <br> (default: true).
+ *   Set to false for structured markdown files where standard paragraph spacing is preferred.
  */
-const MarkdownRenderer = ({ content, size = "sm", className = "" }) => {
+const MarkdownRenderer = ({ content, size = "sm", className = "", breaks = true }) => {
   const isExtraSmall = size === "xs";
 
   // Base text size classes
@@ -24,7 +26,7 @@ const MarkdownRenderer = ({ content, size = "sm", className = "" }) => {
     h1: ({ _node, children, ...props }) => (
       <h1
         className={`font-bold text-dark-100 ${
-          isExtraSmall ? "text-base mt-2 mb-1" : "text-2xl mt-4 mb-2"
+          isExtraSmall ? "text-base mt-3 mb-1.5" : "text-2xl mt-6 mb-3"
         }`}
         {...props}
       >
@@ -34,7 +36,7 @@ const MarkdownRenderer = ({ content, size = "sm", className = "" }) => {
     h2: ({ _node, children, ...props }) => (
       <h2
         className={`font-semibold text-dark-100 ${
-          isExtraSmall ? "text-sm mt-2 mb-1" : "text-xl mt-3 mb-2"
+          isExtraSmall ? "text-sm mt-3 mb-1" : "text-xl mt-5 mb-2"
         }`}
         {...props}
       >
@@ -44,7 +46,7 @@ const MarkdownRenderer = ({ content, size = "sm", className = "" }) => {
     h3: ({ _node, children, ...props }) => (
       <h3
         className={`font-semibold text-dark-100 ${
-          isExtraSmall ? "text-xs mt-2 mb-1" : "text-lg mt-3 mb-2"
+          isExtraSmall ? "text-xs mt-2 mb-1" : "text-lg mt-4 mb-2"
         }`}
         {...props}
       >
@@ -55,25 +57,21 @@ const MarkdownRenderer = ({ content, size = "sm", className = "" }) => {
     // Paragraphs
     p: ({ _node, ...props }) => (
       <p
-        className={`${textSize} text-dark-200 mb-2 last:mb-0 ${
-          isExtraSmall ? "leading-relaxed" : ""
-        }`}
+        className={`${textSize} text-dark-200 mb-3 last:mb-0 leading-relaxed`}
         {...props}
       />
     ),
 
     // Lists
     ul: ({ _node, ...props }) => {
-      // Use list-outside for better nested list support
       // Check if this is nested by examining parent structure
       let depth = 0;
       let parent = _node?.parent;
       while (parent) {
-        if (parent.type === 'listItem') depth++;
+        if (parent.type === "listItem") depth++;
         parent = parent.parent;
       }
-      // Top-level lists use ml-6, nested lists use ml-5 for proper indentation
-      const marginClass = depth > 0 ? 'ml-5 mt-1' : 'ml-6';
+      const marginClass = depth > 0 ? "ml-4 mt-1" : "ml-4";
       return (
         <ul
           className={`list-disc list-outside ${marginClass} ${textSize} text-dark-200 mb-2 space-y-1 last:mb-0`}
@@ -82,16 +80,14 @@ const MarkdownRenderer = ({ content, size = "sm", className = "" }) => {
       );
     },
     ol: ({ _node, ...props }) => {
-      // Use list-outside for better nested list support
       // Check if this is nested by examining parent structure
       let depth = 0;
       let parent = _node?.parent;
       while (parent) {
-        if (parent.type === 'listItem') depth++;
+        if (parent.type === "listItem") depth++;
         parent = parent.parent;
       }
-      // Top-level lists use ml-6, nested lists use ml-5 for proper indentation
-      const marginClass = depth > 0 ? 'ml-5 mt-1' : 'ml-6';
+      const marginClass = depth > 0 ? "ml-4 mt-1" : "ml-4";
       return (
         <ol
           className={`list-decimal list-outside ${marginClass} ${textSize} text-dark-200 mb-2 space-y-1 last:mb-0`}
@@ -196,7 +192,7 @@ const MarkdownRenderer = ({ content, size = "sm", className = "" }) => {
       className={`prose prose-invert ${proseSize} max-w-none text-dark-200 ${className}`}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
+        remarkPlugins={breaks ? [remarkGfm, remarkBreaks] : [remarkGfm]}
         components={components}
       >
         {content}
@@ -209,6 +205,7 @@ MarkdownRenderer.propTypes = {
   content: PropTypes.string.isRequired,
   size: PropTypes.oneOf(["sm", "xs"]),
   className: PropTypes.string,
+  breaks: PropTypes.bool,
 };
 
 export default MarkdownRenderer;

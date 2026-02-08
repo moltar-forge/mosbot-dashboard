@@ -77,4 +77,32 @@ describe("MarkdownRenderer", () => {
     expect(screen.getByText("Cell 1")).toBeInTheDocument();
     expect(screen.getByText("Cell 2")).toBeInTheDocument();
   });
+
+  it("renders inline code without literal backticks in list items", () => {
+    const content = `- **API version**: \`v1\`
+- **Base URL**: \`example.com/api\``;
+    const { container } = render(<MarkdownRenderer content={content} size="sm" />);
+    
+    // The code elements should exist
+    const codeElements = container.querySelectorAll("code");
+    expect(codeElements.length).toBe(2);
+    expect(codeElements[0].textContent).toBe("v1");
+    expect(codeElements[1].textContent).toBe("example.com/api");
+    
+    // Backtick characters should NOT appear in the rendered output
+    const fullText = container.textContent;
+    expect(fullText).not.toContain("`");
+  });
+
+  it("renders inline code without backticks in paragraphs", () => {
+    const content = "Use the `projects/<name>/` directory for project files.";
+    const { container } = render(<MarkdownRenderer content={content} size="sm" />);
+    
+    const codeEl = container.querySelector("code");
+    expect(codeEl).toBeTruthy();
+    expect(codeEl.textContent).toBe("projects/<name>/");
+    
+    // No literal backticks in rendered output
+    expect(container.textContent).not.toContain("`");
+  });
 });

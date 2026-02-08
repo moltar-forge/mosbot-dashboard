@@ -367,7 +367,7 @@ export default function FilePreview({ file, onDelete }) {
             placeholder="File content..."
           />
         ) : isMarkdown ? (
-          <MarkdownRenderer content={content.content} size="sm" />
+          <MarkdownRenderer content={content.content} size="sm" breaks={false} />
         ) : (
           <pre className="bg-dark-950 p-4 rounded-lg border border-dark-800 overflow-x-auto">
             <code className="text-sm text-dark-200 font-mono">
