@@ -12,7 +12,7 @@ import remarkBreaks from "remark-breaks";
  * @param {string} className - Additional CSS classes for the wrapper
  */
 const MarkdownRenderer = ({ content, size = "sm", className = "" }) => {
-q  const isExtraSmall = size === "xs";
+  const isExtraSmall = size === "xs";
 
   // Base text size classes
   const textSize = isExtraSmall ? "text-xs" : "text-sm";
