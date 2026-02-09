@@ -112,33 +112,12 @@ const MarkdownRenderer = ({ content, size = "sm", className = "", breaks = true 
     // Code - in react-markdown v10+, the `inline` prop was removed.
     // Inline backticks render as bare <code>; fenced blocks render as <pre><code>.
     // Always style <code> as inline; <pre> handles block-level wrapping.
-    code: ({ _node, children, ...props }) => {
-      // Clean up any stray backticks that might appear in the children
-      // This handles edge cases where markdown parsing might include backticks
-      let cleanChildren = children;
-      
-      if (typeof children === 'string') {
-        // Remove ALL backticks from string children (not just leading/trailing)
-        cleanChildren = children.replace(/`/g, '');
-      } else if (Array.isArray(children)) {
-        // Handle array of children (e.g., mixed text and elements)
-        cleanChildren = children.map(child => {
-          if (typeof child === 'string') {
-            return child.replace(/`/g, '');
-          }
-          return child;
-        });
-      }
-      
-      return (
-        <code
-          className={`bg-dark-900 px-1.5 py-0.5 rounded text-primary-400 ${textSize} font-mono whitespace-nowrap`}
-          {...props}
-        >
-          {cleanChildren}
-        </code>
-      );
-    },
+    code: ({ _node, ...props }) => (
+      <code
+        className={`bg-dark-900 px-1.5 py-0.5 rounded text-primary-400 ${textSize} font-mono whitespace-nowrap`}
+        {...props}
+      />
+    ),
     // Pre wraps fenced code blocks - provides block-level styling
     pre: ({ _node, ...props }) => (
       <pre

@@ -24,6 +24,42 @@ const ICON_MAP = {
   BoltIcon,
 };
 
+// Helper: format large token counts with k/m suffix
+const formatTokenCount = (count) => {
+  if (count >= 1000000) {
+    return `${(count / 1000000).toFixed(1)}m`;
+  }
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(1)}k`;
+  }
+  return count.toString();
+};
+
+// Helper: format USD cost with sensible precision (avoid always showing $0.00)
+const formatCost = (cost) => {
+  if (cost == null) return null;
+  const numCost = parseFloat(cost);
+  if (isNaN(numCost)) return null;
+  
+  // For very small costs (< $0.01), show more precision
+  if (numCost < 0.01 && numCost > 0) {
+    return `$${numCost.toFixed(4)}`;
+  }
+  // For costs >= $0.01, show 2 decimal places
+  return `$${numCost.toFixed(2)}`;
+};
+
+// Helper: check if task has any AI usage data
+const hasAIUsage = (task) => {
+  return task.agent_cost_usd != null ||
+         task.agent_tokens_input != null ||
+         task.agent_tokens_input_cache != null ||
+         task.agent_tokens_output != null ||
+         task.agent_tokens_output_cache != null ||
+         task.agent_model != null ||
+         task.agent_model_provider != null;
+};
+
 export default function TaskCard({ task, onClick }) {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ITEM_TYPE,
@@ -95,6 +131,52 @@ export default function TaskCard({ task, onClick }) {
           ))}
         </div>
       )}
+
+      {/* AI Usage */}
+      {hasAIUsage(task) && (() => {
+        const totalInput = (task.agent_tokens_input ?? 0) + (task.agent_tokens_input_cache ?? 0);
+        const totalOutput = (task.agent_tokens_output ?? 0) + (task.agent_tokens_output_cache ?? 0);
+        const totalTokens = totalInput + totalOutput;
+        const formattedCost = formatCost(task.agent_cost_usd);
+        
+        // Build tooltip content
+        const tooltipLines = [];
+        if (task.agent_model_provider || task.agent_model) {
+          const provider = task.agent_model_provider || '?';
+          const model = task.agent_model || '?';
+          tooltipLines.push(`Provider/Model: ${provider}/${model}`);
+        }
+        if (totalTokens > 0) {
+          const inputStr = task.agent_tokens_input != null ? task.agent_tokens_input : '?';
+          const inputCacheStr = task.agent_tokens_input_cache != null ? task.agent_tokens_input_cache : '?';
+          const outputStr = task.agent_tokens_output != null ? task.agent_tokens_output : '?';
+          const outputCacheStr = task.agent_tokens_output_cache != null ? task.agent_tokens_output_cache : '?';
+          tooltipLines.push(`Input: ${inputStr} (cache ${inputCacheStr}), Output: ${outputStr} (cache ${outputCacheStr})`);
+        }
+        if (formattedCost) {
+          tooltipLines.push(`Cost: ${formattedCost}`);
+        }
+        const tooltip = tooltipLines.join('\n');
+        
+        // Build display text
+        const parts = [];
+        if (totalTokens > 0) {
+          parts.push(`${formatTokenCount(totalTokens)} tok`);
+        }
+        if (formattedCost) {
+          parts.push(formattedCost);
+        }
+        const displayText = parts.length > 0 ? `AI: ${parts.join(' • ')}` : 'AI';
+        
+        return (
+          <div 
+            className="text-xs text-primary-400 mb-3 font-mono"
+            title={tooltip}
+          >
+            {displayText}
+          </div>
+        );
+      })()}
 
       {/* Footer with metadata */}
       <div className="flex items-center justify-between text-xs text-dark-500">

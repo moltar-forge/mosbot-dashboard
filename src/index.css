@@ -72,3 +72,16 @@
 .scrollbar-track-dark-900::-webkit-scrollbar-track {
   background-color: #0f172a;
 }
+
+/* Override Tailwind Typography prose styles for code elements */
+/* Remove backtick pseudo-elements that are added by default */
+.prose code::before,
+.prose code::after {
+  content: none !important;
+}
+
+/* Remove unnecessary padding from code elements */
+.prose code {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}

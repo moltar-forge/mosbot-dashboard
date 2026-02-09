@@ -297,4 +297,77 @@ describe('TaskCard', () => {
 
     expect(screen.getByText('Minimal Task')).toBeInTheDocument();
   });
+
+  it('renders AI usage when agent fields are provided', () => {
+    const taskWithAI = {
+      ...baseTask,
+      agent_cost_usd: 0.0523,
+      agent_tokens_input: 1500,
+      agent_tokens_input_cache: 500,
+      agent_tokens_output: 800,
+      agent_tokens_output_cache: 200,
+      agent_model: 'claude-3-sonnet',
+      agent_model_provider: 'anthropic',
+    };
+
+    render(<TaskCard task={taskWithAI} onClick={mockOnClick} />);
+
+    // Check that AI usage is displayed
+    expect(screen.getByText(/AI:/)).toBeInTheDocument();
+    
+    // Check that total tokens are shown (1500 + 500 + 800 + 200 = 3000 = 3.0k)
+    expect(screen.getByText(/3\.0k tok/)).toBeInTheDocument();
+    
+    // Check that cost is shown
+    expect(screen.getByText(/\$0\.05/)).toBeInTheDocument();
+  });
+
+  it('renders AI usage with partial data', () => {
+    const taskWithPartialAI = {
+      ...baseTask,
+      agent_cost_usd: 0.0012,
+      agent_tokens_input: 250,
+    };
+
+    render(<TaskCard task={taskWithPartialAI} onClick={mockOnClick} />);
+
+    // Check that AI usage is displayed
+    expect(screen.getByText(/AI:/)).toBeInTheDocument();
+    
+    // Check that cost is shown with appropriate precision for small values
+    expect(screen.getByText(/\$0\.0012/)).toBeInTheDocument();
+  });
+
+  it('formats large token counts correctly', () => {
+    const taskWithLargeTokens = {
+      ...baseTask,
+      agent_tokens_input: 1500000,
+      agent_tokens_output: 500000,
+    };
+
+    render(<TaskCard task={taskWithLargeTokens} onClick={mockOnClick} />);
+
+    // Total is 2,000,000 which should be formatted as 2.0m
+    expect(screen.getByText(/2\.0m tok/)).toBeInTheDocument();
+  });
+
+  it('does not render AI usage when all agent fields are absent', () => {
+    render(<TaskCard task={baseTask} onClick={mockOnClick} />);
+
+    // AI usage section should not be present
+    expect(screen.queryByText(/AI:/)).not.toBeInTheDocument();
+  });
+
+  it('renders AI usage with only model info', () => {
+    const taskWithModelOnly = {
+      ...baseTask,
+      agent_model: 'gpt-4',
+      agent_model_provider: 'openai',
+    };
+
+    render(<TaskCard task={taskWithModelOnly} onClick={mockOnClick} />);
+
+    // AI usage should still render even with just model info
+    expect(screen.getByText(/AI/)).toBeInTheDocument();
+  });
 });
