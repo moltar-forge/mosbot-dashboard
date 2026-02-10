@@ -8,15 +8,20 @@ const TaskModal = lazy(() => import('../components/TaskModal'));
 export default function TaskView() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { fetchTaskById, tasks, isLoading, error } = useTaskStore();
+  const { fetchTaskById, isLoading, error } = useTaskStore();
   const [task, setTask] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const loadTask = async () => {
       try {
-        // Check if task is already in store
-        const existingTask = tasks.find(t => t.id === id);
+        // Check if task is already in store (by id or by task key e.g. TASK-23)
+        const tasks = useTaskStore.getState().tasks;
+        const existingTask = tasks.find(
+          (t) =>
+            t.id === id ||
+            (t.task_number && `TASK-${t.task_number}` === id)
+        );
         if (existingTask) {
           setTask(existingTask);
           setIsModalOpen(true);
@@ -34,7 +39,7 @@ export default function TaskView() {
     if (id) {
       loadTask();
     }
-  }, [id, fetchTaskById, tasks]);
+  }, [id, fetchTaskById]);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
