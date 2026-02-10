@@ -20,8 +20,8 @@ const BotAvatar = lazy(() => import('./BotAvatar'));
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: ChartBarIcon },
-  { name: 'Workspace', href: '/workspace', icon: FolderIcon },
   { name: 'Subagents', href: '/subagents', icon: CpuChipIcon },
+  { name: 'Workspace', href: '/workspace', icon: FolderIcon },
   { name: 'Log', href: '/log', icon: ClipboardDocumentListIcon },
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, subpages: [
     { name: 'Users', href: '/settings/users', icon: UserIcon },

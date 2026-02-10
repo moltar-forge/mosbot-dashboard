@@ -116,7 +116,7 @@ api.interceptors.response.use(
 
 // OpenClaw Subagents API
 export const getSubagents = async () => {
-  const response = await api.get('/v1/openclaw/subagents');
+  const response = await api.get('/openclaw/subagents');
   return response.data.data;
 };
 
