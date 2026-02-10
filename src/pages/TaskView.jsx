@@ -56,6 +56,8 @@ export default function TaskView() {
 
     if (id) {
       loadTask();
+    } else {
+      setLoading(false);
     }
 
     return () => {

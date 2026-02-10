@@ -15,14 +15,21 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-// Mock stores - useTaskStore needs both hook return and getState() for direct store access
+// Mock stores - useTaskStore needs both selector support and getState() for direct store access
 // vi.hoisted ensures these exist before vi.mock runs
 const { mockFetchTaskById, mockTasks, mockUseTaskStore } = vi.hoisted(() => {
   const mockFetchTaskById = vi.fn();
   const mockTasks = [];
-  const mockUseTaskStore = Object.assign(vi.fn(), {
-    getState: () => ({ tasks: mockTasks }),
+  const createState = () => ({
+    fetchTaskById: mockFetchTaskById,
+    tasks: mockTasks,
+    isLoading: false,
+    error: null,
   });
+  const mockUseTaskStore = Object.assign(
+    (selector) => (typeof selector === 'function' ? selector(createState()) : createState()),
+    { getState: () => ({ tasks: mockTasks }) }
+  );
   return { mockFetchTaskById, mockTasks, mockUseTaskStore };
 });
 vi.mock('../stores/taskStore', () => ({
@@ -54,23 +61,11 @@ describe('TaskView', () => {
     vi.clearAllMocks();
     mockNavigate.mockClear();
     mockTasks.length = 0;
-    mockUseTaskStore.mockReturnValue({
-      fetchTaskById: mockFetchTaskById,
-      tasks: [],
-      isLoading: false,
-      error: null,
-    });
   });
 
   it('loads task from store when available', async () => {
     const existingTask = { id: '1', title: 'Existing Task', status: 'TODO' };
     mockTasks.push(existingTask);
-    mockUseTaskStore.mockReturnValue({
-      fetchTaskById: mockFetchTaskById,
-      tasks: [existingTask],
-      isLoading: false,
-      error: null,
-    });
 
     render(
       <MemoryRouter initialEntries={['/task/1']}>
@@ -117,13 +112,9 @@ describe('TaskView', () => {
     );
   });
 
-  it('shows loading state', () => {
-    useTaskStore.mockReturnValue({
-      fetchTaskById: mockFetchTaskById,
-      tasks: [],
-      isLoading: true,
-      error: null,
-    });
+  it('shows loading state', async () => {
+    // Task not in store - fetchTaskById will be called. Never resolve so we stay in loading state
+    mockFetchTaskById.mockImplementation(() => new Promise(() => {}));
 
     render(
       <MemoryRouter initialEntries={['/task/1']}>
@@ -133,16 +124,16 @@ describe('TaskView', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loading task...')).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(screen.getByText('Loading task...')).toBeInTheDocument();
+      },
+      { timeout: 500 }
+    );
   });
 
-  it('shows error state', () => {
-    useTaskStore.mockReturnValue({
-      fetchTaskById: mockFetchTaskById,
-      tasks: [],
-      isLoading: false,
-      error: 'Task not found',
-    });
+  it('shows error state', async () => {
+    mockFetchTaskById.mockRejectedValue(new Error('Task not found'));
 
     render(
       <MemoryRouter initialEntries={['/task/1']}>
@@ -152,8 +143,13 @@ describe('TaskView', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Error loading task')).toBeInTheDocument();
-    expect(screen.getByText('Task not found')).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(screen.getByText('Error loading task')).toBeInTheDocument();
+        expect(screen.getByText('Task not found')).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   });
 
   it('navigates to dashboard when close button is clicked', async () => {
@@ -162,12 +158,6 @@ describe('TaskView', () => {
 
     const existingTask = { id: '1', title: 'Task', status: 'TODO' };
     mockTasks.push(existingTask);
-    mockUseTaskStore.mockReturnValue({
-      fetchTaskById: mockFetchTaskById,
-      tasks: [existingTask],
-      isLoading: false,
-      error: null,
-    });
 
     render(
       <MemoryRouter initialEntries={['/task/1']}>
