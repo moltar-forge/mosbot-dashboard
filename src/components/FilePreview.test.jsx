@@ -25,6 +25,8 @@ describe('FilePreview', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // fetchFileContent must return a Promise so .catch() works (called in useEffect)
+    mockFetchFileContent.mockResolvedValue({ content: '', encoding: 'utf8' });
     useAuthStore.mockReturnValue({
       isAdmin: () => false,
     });
@@ -37,6 +39,7 @@ describe('FilePreview', () => {
       contentError: null,
       fetchFileContent: mockFetchFileContent,
       updateFile: mockUpdateFile,
+      fetchListing: vi.fn().mockResolvedValue({}),
     });
   });
 
@@ -55,6 +58,7 @@ describe('FilePreview', () => {
         contentError: 'Admin access required',
         fetchFileContent: mockFetchFileContent,
         updateFile: mockUpdateFile,
+        fetchListing: vi.fn().mockResolvedValue({}),
       });
 
       render(<FilePreview file={mockFile} />);
@@ -78,6 +82,7 @@ describe('FilePreview', () => {
         contentError: 'Error 403: Forbidden',
         fetchFileContent: mockFetchFileContent,
         updateFile: mockUpdateFile,
+        fetchListing: vi.fn().mockResolvedValue({}),
       });
 
       render(<FilePreview file={mockFile} />);
@@ -99,6 +104,7 @@ describe('FilePreview', () => {
         contentError: 'Forbidden access',
         fetchFileContent: mockFetchFileContent,
         updateFile: mockUpdateFile,
+        fetchListing: vi.fn().mockResolvedValue({}),
       });
 
       render(<FilePreview file={mockFile} />);
@@ -120,6 +126,7 @@ describe('FilePreview', () => {
         contentError: 'Admin access required',
         fetchFileContent: mockFetchFileContent,
         updateFile: mockUpdateFile,
+        fetchListing: vi.fn().mockResolvedValue({}),
       });
 
       const { container } = render(<FilePreview file={mockFile} />);
@@ -143,6 +150,7 @@ describe('FilePreview', () => {
         contentError: 'Admin access required',
         fetchFileContent: mockFetchFileContent,
         updateFile: mockUpdateFile,
+        fetchListing: vi.fn().mockResolvedValue({}),
       });
 
       render(<FilePreview file={mockFile} />);
@@ -167,6 +175,7 @@ describe('FilePreview', () => {
         contentError: 'Network error occurred',
         fetchFileContent: mockFetchFileContent,
         updateFile: mockUpdateFile,
+        fetchListing: vi.fn().mockResolvedValue({}),
       });
 
       render(<FilePreview file={mockFile} />);
@@ -190,6 +199,7 @@ describe('FilePreview', () => {
         contentError: 'Network error occurred',
         fetchFileContent: mockFetchFileContent,
         updateFile: mockUpdateFile,
+        fetchListing: vi.fn().mockResolvedValue({}),
       });
 
       const { container } = render(<FilePreview file={mockFile} />);

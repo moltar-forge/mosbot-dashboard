@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CreateFolderModal from './CreateFolderModal';
 import { useWorkspaceStore } from '../stores/workspaceStore';
@@ -60,10 +60,12 @@ describe('CreateFolderModal', () => {
     );
 
     const input = screen.getByLabelText('Folder Name');
-    await user.type(input, 'newfolder');
-
     const submitButton = screen.getByText('Create Folder');
-    await user.click(submitButton);
+
+    await act(async () => {
+      await user.type(input, 'newfolder');
+      await user.click(submitButton);
+    });
 
     expect(mockCreateDirectory).toHaveBeenCalledWith({ path: '/newfolder' });
     expect(mockShowToast).toHaveBeenCalledWith(
@@ -82,10 +84,12 @@ describe('CreateFolderModal', () => {
     );
 
     const input = screen.getByLabelText('Folder Name');
-    await user.type(input, 'subfolder');
-
     const submitButton = screen.getByText('Create Folder');
-    await user.click(submitButton);
+
+    await act(async () => {
+      await user.type(input, 'subfolder');
+      await user.click(submitButton);
+    });
 
     expect(mockCreateDirectory).toHaveBeenCalledWith({ path: '/documents/subfolder' });
   });
@@ -97,7 +101,10 @@ describe('CreateFolderModal', () => {
     );
 
     const submitButton = screen.getByText('Create Folder');
-    await user.click(submitButton);
+
+    await act(async () => {
+      await user.click(submitButton);
+    });
 
     expect(mockShowToast).toHaveBeenCalledWith('Folder name is required', 'error');
     expect(mockCreateDirectory).not.toHaveBeenCalled();
@@ -110,10 +117,12 @@ describe('CreateFolderModal', () => {
     );
 
     const input = screen.getByLabelText('Folder Name');
-    await user.type(input, 'folder<name>');
-
     const submitButton = screen.getByText('Create Folder');
-    await user.click(submitButton);
+
+    await act(async () => {
+      await user.type(input, 'folder<name>');
+      await user.click(submitButton);
+    });
 
     expect(mockShowToast).toHaveBeenCalledWith(
       'Folder name contains invalid characters',
@@ -128,10 +137,12 @@ describe('CreateFolderModal', () => {
     );
 
     const input = screen.getByLabelText('Folder Name');
-    await user.type(input, '../folder');
-
     const submitButton = screen.getByText('Create Folder');
-    await user.click(submitButton);
+
+    await act(async () => {
+      await user.type(input, '../folder');
+      await user.click(submitButton);
+    });
 
     expect(mockShowToast).toHaveBeenCalledWith(
       'Folder name cannot contain / or ..',
@@ -149,10 +160,12 @@ describe('CreateFolderModal', () => {
     );
 
     const input = screen.getByLabelText('Folder Name');
-    await user.type(input, 'testfolder');
-
     const submitButton = screen.getByText('Create Folder');
-    await user.click(submitButton);
+
+    await act(async () => {
+      await user.type(input, 'testfolder');
+      await user.click(submitButton);
+    });
 
     expect(mockShowToast).toHaveBeenCalledWith('Create failed', 'error');
     expect(mockOnClose).not.toHaveBeenCalled();
@@ -167,14 +180,14 @@ describe('CreateFolderModal', () => {
     );
 
     const input = screen.getByLabelText('Folder Name');
-    await user.type(input, 'testfolder');
-
     const submitButton = screen.getByText('Create Folder');
-    await user.click(submitButton);
 
-    await vi.waitFor(() => {
-      expect(mockOnClose).toHaveBeenCalled();
+    await act(async () => {
+      await user.type(input, 'testfolder');
+      await user.click(submitButton);
     });
+
+    expect(mockOnClose).toHaveBeenCalled();
   });
 
   it('trims whitespace from folder name', async () => {
@@ -186,10 +199,12 @@ describe('CreateFolderModal', () => {
     );
 
     const input = screen.getByLabelText('Folder Name');
-    await user.type(input, '  testfolder  ');
-
     const submitButton = screen.getByText('Create Folder');
-    await user.click(submitButton);
+
+    await act(async () => {
+      await user.type(input, '  testfolder  ');
+      await user.click(submitButton);
+    });
 
     expect(mockCreateDirectory).toHaveBeenCalledWith({ path: '/testfolder' });
   });
