@@ -353,30 +353,27 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
       {/* Toolbar */}
       <div className="px-4 py-3 border-b border-dark-800 bg-dark-900">
         <div className="flex items-center justify-between gap-4">
-          {/* Left: Breadcrumbs (flat mode) or title (tree mode) */}
+          {/* Left: Breadcrumbs for navigation (both modes) */}
           <div className="flex items-center gap-2 min-w-0">
-            {viewMode === 'flat' ? (
-              <nav className="flex items-center gap-1 text-sm">
-                {breadcrumbs.map((crumb, index) => (
-                  <div key={crumb.path} className="flex items-center gap-1">
-                    {index > 0 && <ChevronRightIcon className="w-4 h-4 text-dark-500" />}
-                    <button
-                      onClick={() => handleBreadcrumbClick(crumb.path)}
-                      className={classNames(
-                        'px-2 py-1 rounded hover:bg-dark-800 transition-colors',
-                        index === breadcrumbs.length - 1
-                          ? 'text-primary-400 font-medium'
-                          : 'text-dark-400'
-                      )}
-                    >
-                      {crumb.name}
-                    </button>
-                  </div>
-                ))}
-              </nav>
-            ) : (
-              <h3 className="text-lg font-semibold text-dark-100">Workspace Files</h3>
-            )}
+            <nav className="flex items-center gap-1 text-sm">
+              {breadcrumbs.map((crumb, index) => (
+                <div key={crumb.path} className="flex items-center gap-1">
+                  {index > 0 && <ChevronRightIcon className="w-4 h-4 text-dark-500 flex-shrink-0" />}
+                  <button
+                    onClick={() => handleBreadcrumbClick(crumb.path)}
+                    className={classNames(
+                      'px-2 py-1 rounded hover:bg-dark-800 transition-colors truncate max-w-[8rem]',
+                      index === breadcrumbs.length - 1
+                        ? 'text-primary-400 font-medium'
+                        : 'text-dark-400'
+                    )}
+                    title={crumb.path}
+                  >
+                    {crumb.name}
+                  </button>
+                </div>
+              ))}
+            </nav>
           </div>
           
           {/* Right: Controls */}
