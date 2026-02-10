@@ -121,6 +121,10 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
   const [epicTasks, setEpicTasks] = useState([]);
   const [loadingEpics, setLoadingEpics] = useState(false);
 
+  // Models for AI model dropdown
+  const [models, setModels] = useState([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
   // Share button state
   const [copied, setCopied] = useState(false);
 
@@ -151,6 +155,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
     dueDate: "",
     assignee_id: "",
     parent_task_id: "",
+    preferred_model: "",
     tags: [],
   });
 
@@ -183,6 +188,20 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
       logger.error("Failed to fetch epic tasks", error);
     } finally {
       setLoadingEpics(false);
+    }
+  };
+
+  // Fetch available models for AI model dropdown
+  const fetchModels = async () => {
+    setLoadingModels(true);
+    try {
+      const response = await api.get("/models");
+      setModels(response.data.data.models || []);
+    } catch (error) {
+      logger.error("Failed to fetch models", error);
+      setModels([]);
+    } finally {
+      setLoadingModels(false);
     }
   };
 
@@ -249,6 +268,9 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
       // Fetch epic tasks for parent dropdown
       fetchEpicTasks();
 
+      // Fetch models for AI model dropdown
+      fetchModels();
+
       // Fetch existing tags for autocomplete
       fetchExistingTags();
 
@@ -286,6 +308,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
             : "", // API uses 'due_date'
           assignee_id: task.assignee_id || "", // Use assignee_id from API
           parent_task_id: task.parent_task_id || "",
+          preferred_model: task.preferred_model || "",
           tags: taskTags,
         });
 
@@ -321,6 +344,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
           dueDate: "",
           assignee_id: "",
           parent_task_id: "",
+          preferred_model: "",
           tags: [],
         });
         setHistory([]);
@@ -665,6 +689,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
       due_date: formData.dueDate || null, // API expects 'due_date', not 'dueDate'
       assignee_id: formData.assignee_id || null, // Use assignee_id from dropdown
       parent_task_id: formData.parent_task_id || null,
+      preferred_model: formData.preferred_model || null,
       // Note: API doesn't support 'tags' yet, but we keep it in formData for future use
       tags: tags && tags.length > 0 ? tags : null,
     };
@@ -693,6 +718,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
             : "",
           assignee_id: mergedTask.assignee_id || "",
           parent_task_id: mergedTask.parent_task_id || "",
+          preferred_model: mergedTask.preferred_model || "",
           tags: tags,
         });
 
@@ -1326,6 +1352,19 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                 </p>
                               </div>
                             )}
+
+                            <div className="border-t border-dark-700 pt-4">
+                              <label className="block text-xs font-medium text-dark-500 mb-1 uppercase tracking-wider">
+                                AI Model
+                              </label>
+                              <p className="text-dark-100">
+                                {formData.preferred_model
+                                  ? models.find(
+                                      (m) => m.id === formData.preferred_model
+                                    )?.name || formData.preferred_model
+                                  : "Default"}
+                              </p>
+                            </div>
 
                             <div className="border-t border-dark-700 pt-4">
                               <label className="block text-xs font-medium text-dark-500 mb-1 uppercase tracking-wider">
@@ -2493,6 +2532,35 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                   <option key={user.id} value={user.id}>
                                     {user.name}{" "}
                                     {user.email ? `(${user.email})` : ""}
+                                  </option>
+                                ))
+                              )}
+                            </select>
+                          </div>
+
+                          {/* AI Model */}
+                          <div>
+                            <label
+                              htmlFor="preferred_model"
+                              className="block text-xs font-medium text-dark-500 mb-2 uppercase tracking-wider"
+                            >
+                              AI Model
+                            </label>
+                            <select
+                              id="preferred_model"
+                              name="preferred_model"
+                              value={formData.preferred_model}
+                              onChange={handleChange}
+                              className="input-field"
+                              title="Select AI model for this task"
+                            >
+                              <option value="">Default</option>
+                              {loadingModels ? (
+                                <option disabled>Loading models...</option>
+                              ) : (
+                                models.map((model) => (
+                                  <option key={model.id} value={model.id}>
+                                    {model.name}
                                   </option>
                                 ))
                               )}

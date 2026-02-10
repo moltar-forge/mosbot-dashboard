@@ -15,31 +15,6 @@ vi.mock('react-dnd', () => ({
   DndProvider: ({ children }) => children,
 }));
 
-// Mock Zustand stores
-const mockUpdateTask = vi.fn(() => Promise.resolve());
-const mockShowToast = vi.fn();
-
-vi.mock('../stores/taskStore', () => ({
-  useTaskStore: () => ({
-    updateTask: mockUpdateTask,
-  }),
-}));
-
-vi.mock('../stores/toastStore', () => ({
-  useToastStore: () => ({
-    showToast: mockShowToast,
-  }),
-}));
-
-// Mock API client (TaskCard fetches /models via api.get)
-vi.mock("../api/client", () => ({
-  api: {
-    get: vi.fn(),
-  },
-}));
-
-import { api } from "../api/client";
-
 describe("TaskCard", () => {
   const mockOnClick = vi.fn();
   const baseTask = {
@@ -56,18 +31,6 @@ describe("TaskCard", () => {
       { isDragging: false },
       vi.fn(),
     ]);
-    // Default api.get mock for /models (used by all TaskCard instances)
-    api.get.mockResolvedValue({
-      data: {
-        data: {
-          models: [
-            { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", provider: "anthropic" },
-            { id: "gpt-4o", name: "GPT-4o", provider: "openai" },
-          ],
-          defaultModel: "claude-3-5-sonnet-20241022",
-        },
-      },
-    });
   });
 
   it('renders task title', () => {
@@ -406,110 +369,5 @@ describe("TaskCard", () => {
 
     // AI usage should still render even with just model info
     expect(screen.getByText(/AI/)).toBeInTheDocument();
-  });
-
-  describe("AI Model Selector", () => {
-    const mockModels = [
-      { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", provider: "anthropic" },
-      { id: "gpt-4o", name: "GPT-4o", provider: "openai" },
-    ];
-
-    beforeEach(() => {
-      api.get.mockResolvedValue({
-        data: {
-          data: {
-            models: mockModels,
-            defaultModel: "claude-3-5-sonnet-20241022",
-          },
-        },
-      });
-    });
-
-    it('renders model selector with empty value when preferred_model is null', async () => {
-      render(<TaskCard task={baseTask} onClick={mockOnClick} />);
-
-      // Wait for models to load
-      await screen.findByTitle('Select AI model for this task');
-
-      const select = screen.getByTitle('Select AI model for this task');
-      expect(select).toBeInTheDocument();
-      expect(select.value).toBe('');
-    });
-
-    it('renders model selector with selected model when preferred_model is set', async () => {
-      const taskWithPreferred = {
-        ...baseTask,
-        preferred_model: 'gpt-4o',
-      };
-
-      render(<TaskCard task={taskWithPreferred} onClick={mockOnClick} />);
-
-      // Wait for models to load
-      await screen.findByTitle('Select AI model for this task');
-
-      const select = screen.getByTitle('Select AI model for this task');
-      expect(select.value).toBe('gpt-4o');
-    });
-
-    it('does not trigger card onClick when clicking on model selector', async () => {
-      const user = userEvent.setup();
-      render(<TaskCard task={baseTask} onClick={mockOnClick} />);
-
-      await screen.findByTitle('Select AI model for this task');
-
-      const select = screen.getByTitle('Select AI model for this task');
-      await user.click(select);
-
-      expect(mockOnClick).not.toHaveBeenCalled();
-    });
-
-    it('calls updateTask with correct payload when model is changed', async () => {
-      const user = userEvent.setup();
-      render(<TaskCard task={baseTask} onClick={mockOnClick} />);
-
-      await screen.findByTitle('Select AI model for this task');
-
-      const select = screen.getByTitle('Select AI model for this task');
-      await user.selectOptions(select, 'gpt-4o');
-
-      expect(mockUpdateTask).toHaveBeenCalledWith(baseTask.id, {
-        preferred_model: 'gpt-4o',
-      });
-      expect(mockShowToast).toHaveBeenCalledWith('Model set to GPT-4o', 'success');
-    });
-
-    it('calls updateTask with null when "Default" is selected', async () => {
-      const user = userEvent.setup();
-      const taskWithPreferred = {
-        ...baseTask,
-        preferred_model: 'gpt-4o',
-      };
-
-      render(<TaskCard task={taskWithPreferred} onClick={mockOnClick} />);
-
-      await screen.findByTitle('Select AI model for this task');
-
-      const select = screen.getByTitle('Select AI model for this task');
-      await user.selectOptions(select, '');
-
-      expect(mockUpdateTask).toHaveBeenCalledWith(baseTask.id, {
-        preferred_model: null,
-      });
-      expect(mockShowToast).toHaveBeenCalledWith('Model reset to default', 'success');
-    });
-
-    it('shows error toast when updateTask fails', async () => {
-      const user = userEvent.setup();
-      mockUpdateTask.mockRejectedValueOnce(new Error('Network error'));
-
-      render(<TaskCard task={baseTask} onClick={mockOnClick} />);
-
-      await screen.findByTitle('Select AI model for this task');
-
-      const select = screen.getByTitle('Select AI model for this task');
-      await user.selectOptions(select, 'gpt-4o');
-
-      expect(mockShowToast).toHaveBeenCalledWith('Failed to update model', 'error');
-    });
   });
 });

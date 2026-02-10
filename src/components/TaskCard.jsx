@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useDrag } from 'react-dnd';
 import { 
   ClockIcon, 
@@ -12,10 +11,6 @@ import {
 } from '@heroicons/react/24/outline';
 import { PRIORITY_CONFIG, TASK_PRIORITY, TASK_TYPE_CONFIG, TASK_TYPE } from '../utils/constants';
 import { formatRelativeTime, truncateText, stripMarkdown, classNames } from '../utils/helpers';
-import { useTaskStore } from '../stores/taskStore';
-import { useToastStore } from '../stores/toastStore';
-import { api } from '../api/client';
-import logger from '../utils/logger';
 
 const ITEM_TYPE = 'TASK';
 
@@ -66,12 +61,6 @@ const hasAIUsage = (task) => {
 };
 
 export default function TaskCard({ task, onClick }) {
-  const { updateTask } = useTaskStore();
-  const { showToast } = useToastStore();
-  const [isUpdatingModel, setIsUpdatingModel] = useState(false);
-  const [models, setModels] = useState([]);
-  const [loadingModels, setLoadingModels] = useState(false);
-  
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ITEM_TYPE,
     item: { id: task.id, status: task.status },
@@ -84,56 +73,6 @@ export default function TaskCard({ task, onClick }) {
   const taskType = task.type || TASK_TYPE.TASK;
   const typeConfig = TASK_TYPE_CONFIG[taskType] || TASK_TYPE_CONFIG[TASK_TYPE.TASK];
   const TypeIcon = ICON_MAP[typeConfig.icon];
-  
-  // Fetch available models on mount
-  useEffect(() => {
-    const fetchModels = async () => {
-      setLoadingModels(true);
-      try {
-        const response = await api.get("/models");
-        setModels(response.data.data.models || []);
-      } catch (error) {
-        logger.error("Failed to fetch models", error);
-        setModels([]);
-      } finally {
-        setLoadingModels(false);
-      }
-    };
-    
-    fetchModels();
-  }, []);
-  
-  // Get current model selection value
-  const currentModelValue = task.preferred_model || '';
-  
-  // Handle model selection change
-  const handleModelChange = async (e) => {
-    e.stopPropagation();
-    
-    if (isUpdatingModel) return;
-    
-    const selectedModelId = e.target.value;
-    const selectedModel = models.find(m => m.id === selectedModelId);
-    
-    setIsUpdatingModel(true);
-    
-    try {
-      await updateTask(task.id, {
-        preferred_model: selectedModelId || null,
-      });
-      
-      if (!selectedModelId) {
-        showToast("Model reset to default", "success");
-      } else {
-        showToast(`Model set to ${selectedModel?.name || selectedModelId}`, "success");
-      }
-    } catch (error) {
-      showToast("Failed to update model", "error");
-      logger.error("Failed to update model", error);
-    } finally {
-      setIsUpdatingModel(false);
-    }
-  };
 
   return (
     <div
@@ -192,28 +131,6 @@ export default function TaskCard({ task, onClick }) {
           ))}
         </div>
       )}
-
-      {/* AI Model Selector */}
-      <div 
-        className="mb-3"
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <select
-          value={currentModelValue}
-          onChange={handleModelChange}
-          disabled={isUpdatingModel || loadingModels}
-          className="w-full text-xs px-2 py-1 bg-dark-800 text-dark-300 border border-dark-700 rounded hover:border-dark-600 focus:outline-none focus:border-primary-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Select AI model for this task"
-        >
-          <option value="">Default</option>
-          {models.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.name}
-            </option>
-          ))}
-        </select>
-      </div>
 
       {/* AI Usage */}
       {hasAIUsage(task) && (() => {
