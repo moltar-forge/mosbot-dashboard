@@ -226,7 +226,7 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
     const path = '/' + arr.slice(0, index + 1).join('/');
     acc.push({ name: part, path });
     return acc;
-  }, [{ name: 'root', path: '/' }]);
+  }, [{ name: 'workspace', path: '/' }]);
   
   // Filter files by search query
   const filteredFiles = currentListing?.files?.filter((file) => {
@@ -280,6 +280,16 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
       const urlPath = file.path.startsWith('/') ? file.path : `/${file.path}`;
       navigate(`/workspace${urlPath}`, { replace: true });
     }
+  };
+
+  // When path was opened as file but is actually a directory (e.g. refresh on /workspace/skills)
+  const handlePathIsDirectory = (path) => {
+    useWorkspaceStore.getState().clearErrors();
+    useWorkspaceStore.getState().clearContentCache(path);
+    setCurrentPath(path);
+    setSelectedFile(null);
+    const urlPath = path === '/' ? '' : `${path}/`;
+    navigate(`/workspace${urlPath}`, { replace: true });
   };
   
   // Drag and drop handlers
@@ -572,7 +582,7 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
         </div>
         
         {/* Right pane: File preview */}
-        <FilePreview file={selectedFile} onDelete={handleDelete} />
+        <FilePreview file={selectedFile} onDelete={handleDelete} onPathIsDirectory={handlePathIsDirectory} />
       </div>
       
       {/* Context Menu */}

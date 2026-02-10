@@ -8,7 +8,7 @@ import { useToastStore } from '../stores/toastStore';
 import { formatDateTimeLocal } from '../utils/helpers';
 import logger from '../utils/logger';
 
-export default function FilePreview({ file, onDelete }) {
+export default function FilePreview({ file, onDelete, onPathIsDirectory }) {
   const { 
     fileContents, 
     isLoadingContent, 
@@ -36,8 +36,9 @@ export default function FilePreview({ file, onDelete }) {
       fetchFileContent({ path: file.path }).catch((error) => {
         // Check if this is a 403 Forbidden error (access denied)
         const is403Error = error.response?.status === 403;
-        setIsAccessDenied(is403Error);
-        
+        const errorMsg = error.response?.data?.error?.message || error.response?.data?.error || error.message || '';
+        const isDirAsFileError = typeof errorMsg === 'string' && errorMsg.includes('Cannot read directory as file');
+
         if (is403Error) {
           logger.warn('File access denied (403)', {
             filePath: file.path,
@@ -46,6 +47,9 @@ export default function FilePreview({ file, onDelete }) {
             userEmail: user?.email,
             userRole: user?.role,
           });
+        } else if (isDirAsFileError && onPathIsDirectory) {
+          // Path is a directory (e.g. refresh on /workspace/skills); redirect to directory view
+          onPathIsDirectory(file.path);
         } else {
           logger.error('Failed to load file content', error, {
             filePath: file.path,
@@ -53,13 +57,13 @@ export default function FilePreview({ file, onDelete }) {
             userId: user?.id,
           });
           showToast(
-            error.response?.data?.error?.message || 'Failed to load file',
+            typeof errorMsg === 'string' ? errorMsg : 'Failed to load file',
             'error'
           );
         }
       });
     }
-  }, [file, content, contentError, fetchFileContent, showToast, user]);
+  }, [file, content, contentError, fetchFileContent, showToast, user, onPathIsDirectory]);
   
   // Reset access denied flag when file changes
   useEffect(() => {
@@ -164,7 +168,19 @@ export default function FilePreview({ file, onDelete }) {
     );
   }
   
+  // Redirect when contentError indicates path is a directory (e.g. refresh on /workspace/skills)
+  const isDirAsFileError = contentError?.includes('Cannot read directory as file');
+  useEffect(() => {
+    if (isDirAsFileError && onPathIsDirectory && file) {
+      onPathIsDirectory(file.path);
+    }
+  }, [isDirAsFileError, onPathIsDirectory, file?.path]);
+
   if (contentError) {
+    if (isDirAsFileError && onPathIsDirectory) {
+      return null; // Redirecting; avoid flashing error UI
+    }
+
     // Check if this is a 403 Forbidden error (access denied)
     // Use the state flag set from error.response?.status === 403, with fallback to string matching
     // for cases where contentError was set directly by the store
@@ -388,4 +404,5 @@ FilePreview.propTypes = {
     type: PropTypes.oneOf(['file', 'directory']).isRequired,
   }),
   onDelete: PropTypes.func,
+  onPathIsDirectory: PropTypes.func,
 };

@@ -15,6 +15,7 @@ export default function Subagents() {
     retention: null
   });
   const [error, setError] = useState(null);
+  const [activeFilter, setActiveFilter] = useState(null); // null means auto-select
 
   const fetchSubagents = useCallback(async () => {
     try {
@@ -22,13 +23,24 @@ export default function Subagents() {
       setError(null);
       const response = await getSubagents();
       setData(response);
+      
+      // Auto-select filter on first load if not manually set
+      if (activeFilter === null) {
+        if (response.running.length > 0) {
+          setActiveFilter("running");
+        } else if (response.queued.length > 0) {
+          setActiveFilter("queued");
+        } else {
+          setActiveFilter("completed");
+        }
+      }
     } catch (err) {
       setError(err.message || 'Failed to fetch subagents');
       showToast(err.message || 'Failed to fetch subagents', 'error');
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, activeFilter]);
 
   useEffect(() => {
     fetchSubagents();
@@ -136,6 +148,22 @@ export default function Subagents() {
 
   const hasData = data.running.length > 0 || data.queued.length > 0 || data.completed.length > 0;
 
+  // Determine which data to show based on active filter
+  const getFilteredData = () => {
+    switch (activeFilter) {
+      case "running":
+        return data.running;
+      case "queued":
+        return data.queued;
+      case "completed":
+        return data.completed;
+      default:
+        return [];
+    }
+  };
+
+  const filteredData = getFilteredData();
+
   return (
     <div className="flex flex-col h-full">
       <Header 
@@ -177,6 +205,43 @@ export default function Subagents() {
           </div>
         </div>
 
+        {/* Filter Buttons */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          <button
+            onClick={() => setActiveFilter("running")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+              activeFilter === "running"
+                ? "bg-blue-500/20 text-blue-400 border border-blue-500/40"
+                : "bg-dark-800 text-dark-300 border border-dark-700 hover:border-dark-600"
+            }`}
+          >
+            <PlayIcon className="w-4 h-4" />
+            Running ({data.running.length})
+          </button>
+          <button
+            onClick={() => setActiveFilter("queued")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+              activeFilter === "queued"
+                ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/40"
+                : "bg-dark-800 text-dark-300 border border-dark-700 hover:border-dark-600"
+            }`}
+          >
+            <QueueListIcon className="w-4 h-4" />
+            Queued ({data.queued.length})
+          </button>
+          <button
+            onClick={() => setActiveFilter("completed")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+              activeFilter === "completed"
+                ? "bg-green-500/20 text-green-400 border border-green-500/40"
+                : "bg-dark-800 text-dark-300 border border-dark-700 hover:border-dark-600"
+            }`}
+          >
+            <CheckCircleIcon className="w-4 h-4" />
+            Completed ({data.completed.length})
+          </button>
+        </div>
+
         {/* Retention Info */}
         {data.retention && (
           <div className="bg-dark-800/50 border border-dark-700 rounded-lg p-4 mb-6">
@@ -194,108 +259,54 @@ export default function Subagents() {
           </div>
         )}
 
-        {!hasData && (
+        {/* Empty state - no running or queued */}
+        {activeFilter === "running" && data.running.length === 0 && data.queued.length === 0 && (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
-              <QueueListIcon className="w-16 h-16 text-dark-600 mx-auto mb-4" />
-              <p className="text-dark-400 text-lg">No subagents found</p>
+              <PlayIcon className="w-16 h-16 text-dark-600 mx-auto mb-4" />
+              <p className="text-dark-400 text-lg">No running or queued agents</p>
               <p className="text-dark-500 text-sm mt-2">Subagents will appear here when tasks are executed</p>
             </div>
           </div>
         )}
 
-        {/* Running Subagents */}
-        {data.running.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-dark-100 mb-3 flex items-center gap-2">
-              <PlayIcon className="w-5 h-5 text-blue-400" />
-              Running ({data.running.length})
-            </h2>
-            <div className="space-y-3">
-              {data.running.map((agent, index) => (
-                <div key={agent.sessionKey || agent.taskId || `running-${index}`} className="bg-dark-800 border border-dark-700 rounded-lg p-4 hover:border-blue-500/30 transition-colors">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-dark-100">{agent.sessionLabel || 'Unknown'}</p>
-                      {agent.taskId && (
-                        <p className="text-xs text-dark-400 mt-1">Task ID: {agent.taskId}</p>
-                      )}
-                    </div>
-                    {getStatusBadge(agent.status)}
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 text-xs">
-                    <div>
-                      <p className="text-dark-500">Model</p>
-                      <p className="text-dark-300 mt-1">{agent.model || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-dark-500">Started</p>
-                      <p className="text-dark-300 mt-1">{formatTimestamp(agent.startedAt)}</p>
-                    </div>
-                    <div>
-                      <p className="text-dark-500">Timeout</p>
-                      <p className="text-dark-300 mt-1">{agent.timeoutMinutes ? `${agent.timeoutMinutes}m` : 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-dark-500">Session Key</p>
-                      <p className="text-dark-300 mt-1 truncate">{agent.sessionKey || 'N/A'}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+        {/* Empty state - specific filter has no data */}
+        {((activeFilter === "running" && data.running.length === 0 && data.queued.length > 0) ||
+          (activeFilter === "queued" && data.queued.length === 0) ||
+          (activeFilter === "completed" && data.completed.length === 0)) && (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              {activeFilter === "running" && <PlayIcon className="w-16 h-16 text-dark-600 mx-auto mb-4" />}
+              {activeFilter === "queued" && <QueueListIcon className="w-16 h-16 text-dark-600 mx-auto mb-4" />}
+              {activeFilter === "completed" && <CheckCircleIcon className="w-16 h-16 text-dark-600 mx-auto mb-4" />}
+              <p className="text-dark-400 text-lg">No {activeFilter} subagents</p>
             </div>
           </div>
         )}
 
-        {/* Queued Subagents */}
-        {data.queued.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-dark-100 mb-3 flex items-center gap-2">
-              <QueueListIcon className="w-5 h-5 text-yellow-400" />
-              Queued ({data.queued.length})
-            </h2>
-            <div className="space-y-3">
-              {data.queued.map((agent, index) => (
-                <div key={agent.taskId || `queued-${index}`} className="bg-dark-800 border border-dark-700 rounded-lg p-4 hover:border-yellow-500/30 transition-colors">
+        {/* Filtered Subagents List */}
+        {filteredData.length > 0 && (
+          <div className="space-y-3">
+            {filteredData.map((agent, index) => {
+              const isRunning = activeFilter === "running";
+              const isQueued = activeFilter === "queued";
+              const isCompleted = activeFilter === "completed";
+              
+              return (
+                <div 
+                  key={agent.sessionKey || agent.sessionLabel || agent.taskId || `${activeFilter}-${index}`} 
+                  className={`bg-dark-800 border border-dark-700 rounded-lg p-4 transition-colors ${
+                    isRunning ? "hover:border-blue-500/30" : 
+                    isQueued ? "hover:border-yellow-500/30" : 
+                    "hover:border-green-500/30"
+                  }`}
+                >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-dark-100">{agent.title || 'Untitled'}</p>
-                      {agent.taskId && (
-                        <p className="text-xs text-dark-400 mt-1">Task ID: {agent.taskId}</p>
-                      )}
-                    </div>
-                    {getStatusBadge(agent.status)}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 mt-3 text-xs">
-                    <div>
-                      <p className="text-dark-500">Model</p>
-                      <p className="text-dark-300 mt-1">{agent.model || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-dark-500">Queued</p>
-                      <p className="text-dark-300 mt-1">{formatTimestamp(agent.queuedAt)}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Completed Subagents */}
-        {data.completed.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-dark-100 mb-3 flex items-center gap-2">
-              <CheckCircleIcon className="w-5 h-5 text-green-400" />
-              Completed ({data.completed.length})
-            </h2>
-            <div className="space-y-3">
-              {data.completed.map((agent, index) => (
-                <div key={agent.sessionLabel || agent.taskId || `completed-${index}`} className="bg-dark-800 border border-dark-700 rounded-lg p-4 hover:border-green-500/30 transition-colors">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-dark-100">{agent.sessionLabel || 'Unknown'}</p>
-                      {agent.outcome && (
+                      <p className="text-sm font-medium text-dark-100">
+                        {agent.sessionLabel || agent.title || 'Unknown'}
+                      </p>
+                      {isCompleted && agent.outcome && (
                         <p className="text-xs text-dark-400 mt-1">{agent.outcome}</p>
                       )}
                       {agent.taskId && (
@@ -304,27 +315,67 @@ export default function Subagents() {
                     </div>
                     {getStatusBadge(agent.status)}
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 text-xs">
-                    <div>
-                      <p className="text-dark-500">Started</p>
-                      <p className="text-dark-300 mt-1">{formatTimestamp(agent.startedAt)}</p>
+                  
+                  {/* Running agent details */}
+                  {isRunning && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 text-xs">
+                      <div>
+                        <p className="text-dark-500">Model</p>
+                        <p className="text-dark-300 mt-1">{agent.model || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-dark-500">Started</p>
+                        <p className="text-dark-300 mt-1">{formatTimestamp(agent.startedAt)}</p>
+                      </div>
+                      <div>
+                        <p className="text-dark-500">Timeout</p>
+                        <p className="text-dark-300 mt-1">{agent.timeoutMinutes ? `${agent.timeoutMinutes}m` : 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-dark-500">Session Key</p>
+                        <p className="text-dark-300 mt-1 truncate">{agent.sessionKey || 'N/A'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-dark-500">Completed</p>
-                      <p className="text-dark-300 mt-1">{formatTimestamp(agent.completedAt)}</p>
+                  )}
+                  
+                  {/* Queued agent details */}
+                  {isQueued && (
+                    <div className="grid grid-cols-2 gap-4 mt-3 text-xs">
+                      <div>
+                        <p className="text-dark-500">Model</p>
+                        <p className="text-dark-300 mt-1">{agent.model || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-dark-500">Queued</p>
+                        <p className="text-dark-300 mt-1">{formatTimestamp(agent.queuedAt)}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-dark-500">Duration</p>
-                      <p className="text-dark-300 mt-1">{formatDuration(agent.durationSeconds)}</p>
+                  )}
+                  
+                  {/* Completed agent details */}
+                  {isCompleted && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 text-xs">
+                      <div>
+                        <p className="text-dark-500">Started</p>
+                        <p className="text-dark-300 mt-1">{formatTimestamp(agent.startedAt)}</p>
+                      </div>
+                      <div>
+                        <p className="text-dark-500">Completed</p>
+                        <p className="text-dark-300 mt-1">{formatTimestamp(agent.completedAt)}</p>
+                      </div>
+                      <div>
+                        <p className="text-dark-500">Duration</p>
+                        <p className="text-dark-300 mt-1">{formatDuration(agent.durationSeconds)}</p>
+                      </div>
+                      <div>
+                        <p className="text-dark-500">Status</p>
+                        <p className="text-dark-300 mt-1">Complete</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-dark-500">Status</p>
-                      <p className="text-dark-300 mt-1">Complete</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
       </div>
