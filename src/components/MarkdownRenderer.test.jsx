@@ -211,12 +211,69 @@ describe("MarkdownRenderer", () => {
     
     const codeEl = container.querySelector("code");
     expect(codeEl).toBeTruthy();
-    
-    // Debug: log what we're actually getting
-    console.log('Code element textContent:', JSON.stringify(codeEl.textContent));
-    console.log('Full container text:', JSON.stringify(container.textContent));
-    
+
     expect(codeEl.textContent).toBe("docs/WORKSPACE_CONVENTIONS.md");
     expect(container.textContent).not.toContain("`");
+  });
+
+  it("strips YAML frontmatter from markdown content", () => {
+    const content = `---
+name: frontend-project-bootstrap
+description: Bootstrap a new frontend web project
+---
+
+# Main Content
+
+This is the actual content that should be displayed.`;
+    
+    const { container } = render(<MarkdownRenderer content={content} size="sm" />);
+    
+    // Frontmatter should not be rendered
+    expect(container.textContent).not.toContain("name: frontend-project-bootstrap");
+    expect(container.textContent).not.toContain("description: Bootstrap a new frontend web project");
+    
+    // Main content should be rendered
+    expect(screen.getByText("Main Content")).toBeInTheDocument();
+    expect(screen.getByText("This is the actual content that should be displayed.")).toBeInTheDocument();
+  });
+
+  it("handles markdown with only frontmatter and no content", () => {
+    const content = `---
+name: test-skill
+description: A test skill
+---`;
+    
+    const { container } = render(<MarkdownRenderer content={content} size="sm" />);
+    
+    // Frontmatter should not be rendered as headings or text
+    expect(container.textContent).not.toContain("name: test-skill");
+    expect(container.textContent).not.toContain("description: A test skill");
+  });
+
+  it("handles markdown with frontmatter and multiple sections", () => {
+    const content = `---
+title: Documentation
+version: 1.0
+---
+
+## Introduction
+
+Welcome to the documentation.
+
+## Usage
+
+Here's how to use it.`;
+    
+    render(<MarkdownRenderer content={content} size="sm" />);
+    
+    // Frontmatter should not appear
+    expect(screen.queryByText(/title: Documentation/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/version: 1.0/)).not.toBeInTheDocument();
+    
+    // Content should be rendered
+    expect(screen.getByText("Introduction")).toBeInTheDocument();
+    expect(screen.getByText("Welcome to the documentation.")).toBeInTheDocument();
+    expect(screen.getByText("Usage")).toBeInTheDocument();
+    expect(screen.getByText("Here's how to use it.")).toBeInTheDocument();
   });
 });

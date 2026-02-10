@@ -2,10 +2,16 @@ import PropTypes from "prop-types";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
+import remarkFrontmatter from "remark-frontmatter";
 
 /**
  * MarkdownRenderer - A reusable component for rendering markdown content
  * with consistent styling across the application.
+ *
+ * Features:
+ * - Supports GitHub Flavored Markdown (tables, task lists, strikethrough, etc.)
+ * - Automatically strips YAML frontmatter (e.g., for markdown files with metadata)
+ * - Configurable line break handling
  *
  * @param {string} content - The markdown content to render
  * @param {string} size - Size variant: "sm" (default), "xs" (smaller text)
@@ -199,7 +205,7 @@ const MarkdownRenderer = ({ content, size = "sm", className = "", breaks = true 
       className={`prose prose-invert ${proseSize} max-w-none text-dark-200 ${className}`}
     >
       <ReactMarkdown
-        remarkPlugins={breaks ? [remarkGfm, remarkBreaks] : [remarkGfm]}
+        remarkPlugins={breaks ? [remarkGfm, remarkBreaks, remarkFrontmatter] : [remarkGfm, remarkFrontmatter]}
         components={components}
       >
         {preprocessedContent}
