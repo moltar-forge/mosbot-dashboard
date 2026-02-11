@@ -4,6 +4,7 @@ import {
   ChevronDownIcon,
   FolderIcon,
   FolderOpenIcon,
+  FolderArrowUpIcon,
   DocumentTextIcon,
   DocumentIcon
 } from '@heroicons/react/24/outline';
@@ -201,12 +202,26 @@ export default function WorkspaceTree({
   onDragStart,
   onDragOver,
   onDrop,
-  canModify = false
+  canModify = false,
+  currentPath = '/',
+  onGoUpOneLevel
 }) {
   const sortedFiles = useMemo(() => sortFiles(files), [files]);
   
   return (
     <div className="py-2">
+      {/* Parent Folder entry - only show if not at root */}
+      {currentPath !== '/' && onGoUpOneLevel && (
+        <div
+          onClick={onGoUpOneLevel}
+          className="flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded-md transition-colors hover:bg-dark-800 text-dark-400 mb-1 border-b border-dark-800 pb-2"
+        >
+          <div className="w-4" />
+          <FolderArrowUpIcon className="w-4 h-4 flex-shrink-0" />
+          <span className="text-sm font-medium">Parent Folder</span>
+        </div>
+      )}
+      
       {sortedFiles.length === 0 ? (
         <div className="text-center py-8 text-dark-400">
           <p>No files found</p>

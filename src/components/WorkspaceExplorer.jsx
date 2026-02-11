@@ -6,9 +6,9 @@ import {
   QueueListIcon,
   MagnifyingGlassIcon,
   ChevronRightIcon,
-  ChevronUpIcon,
   DocumentPlusIcon,
-  FolderPlusIcon
+  FolderPlusIcon,
+  FolderArrowUpIcon
 } from '@heroicons/react/24/outline';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useAuthStore } from '../stores/authStore';
@@ -387,16 +387,6 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
         <div className="flex items-center justify-between gap-4">
           {/* Left: Breadcrumbs for navigation (both modes) */}
           <div className="flex items-center gap-2 min-w-0">
-            {/* Go up one level button */}
-            {currentPath !== '/' && (
-              <button
-                onClick={handleGoUpOneLevel}
-                className="p-1.5 text-dark-400 hover:text-dark-200 hover:bg-dark-800 rounded transition-colors flex-shrink-0"
-                title="Go up one level"
-              >
-                <ChevronUpIcon className="w-4 h-4" />
-              </button>
-            )}
             <nav className="flex items-center gap-1 text-sm">
               {breadcrumbs.map((crumb, index) => (
                 <div key={crumb.path} className="flex items-center gap-1">
@@ -558,42 +548,65 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
               onDragStart={handleDragStart}
               onDrop={handleDrop}
               canModify={canModify}
+              currentPath={currentPath}
+              onGoUpOneLevel={handleGoUpOneLevel}
             />
           ) : (
             <div className="py-2">
-              {flatFiles.length === 0 ? (
+              {flatFiles.length === 0 && currentPath === '/' ? (
                 <div className="text-center py-8 text-dark-400">
                   <p className="text-sm">
                     {searchQuery ? 'No files match your search' : 'No files found'}
                   </p>
                 </div>
               ) : (
-                flatFiles
-                  .sort((a, b) => {
-                    // Directories first
-                    if (a.type === 'directory' && b.type !== 'directory') return -1;
-                    if (a.type !== 'directory' && b.type === 'directory') return 1;
-                    // Then alphabetically
-                    return a.name.localeCompare(b.name);
-                  })
-                  .map((file) => (
+                <>
+                  {/* Parent Folder entry - only show if not at root and no search query */}
+                  {currentPath !== '/' && !searchQuery && (
                     <div
-                      key={file.path}
-                      onClick={() => handleFileSelect(file)}
-                      onContextMenu={(e) => handleContextMenu(e, file)}
-                      className={classNames(
-                        'flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors',
-                        selectedFile?.path === file.path
-                          ? 'bg-primary-600/20 text-primary-400'
-                          : 'hover:bg-dark-800 text-dark-200'
-                      )}
+                      onClick={handleGoUpOneLevel}
+                      className="flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors hover:bg-dark-800 text-dark-400 border-b border-dark-800"
                     >
-                      <span className="text-sm truncate">{file.name}</span>
-                      {file.type === 'directory' && (
-                        <ChevronRightIcon className="w-4 h-4 ml-auto flex-shrink-0" />
-                      )}
+                      <FolderArrowUpIcon className="w-5 h-5 flex-shrink-0" />
+                      <span className="text-sm font-medium">Parent Folder</span>
                     </div>
-                  ))
+                  )}
+                  
+                  {flatFiles.length === 0 ? (
+                    <div className="text-center py-8 text-dark-400">
+                      <p className="text-sm">
+                        {searchQuery ? 'No files match your search' : 'No files found'}
+                      </p>
+                    </div>
+                  ) : (
+                    flatFiles
+                      .sort((a, b) => {
+                        // Directories first
+                        if (a.type === 'directory' && b.type !== 'directory') return -1;
+                        if (a.type !== 'directory' && b.type === 'directory') return 1;
+                        // Then alphabetically
+                        return a.name.localeCompare(b.name);
+                      })
+                      .map((file) => (
+                        <div
+                          key={file.path}
+                          onClick={() => handleFileSelect(file)}
+                          onContextMenu={(e) => handleContextMenu(e, file)}
+                          className={classNames(
+                            'flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors',
+                            selectedFile?.path === file.path
+                              ? 'bg-primary-600/20 text-primary-400'
+                              : 'hover:bg-dark-800 text-dark-200'
+                          )}
+                        >
+                          <span className="text-sm truncate">{file.name}</span>
+                          {file.type === 'directory' && (
+                            <ChevronRightIcon className="w-4 h-4 ml-auto flex-shrink-0" />
+                          )}
+                        </div>
+                      ))
+                  )}
+                </>
               )}
             </div>
           )}
