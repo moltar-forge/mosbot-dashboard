@@ -4,7 +4,7 @@ import {
   ChevronDownIcon,
   FolderIcon,
   FolderOpenIcon,
-  FolderArrowUpIcon,
+  ArrowUpIcon,
   DocumentTextIcon,
   DocumentIcon
 } from '@heroicons/react/24/outline';
@@ -216,8 +216,8 @@ export default function WorkspaceTree({
           onClick={onGoUpOneLevel}
           className="flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded-md transition-colors hover:bg-dark-800 text-dark-400 mb-1 border-b border-dark-800 pb-2"
         >
-          <div className="w-4" />
-          <FolderArrowUpIcon className="w-4 h-4 flex-shrink-0" />
+          <ArrowUpIcon className="w-4 h-4 flex-shrink-0" />
+          <FolderIcon className="w-4 h-4 flex-shrink-0 text-yellow-500" />
           <span className="text-sm font-medium">Parent Folder</span>
         </div>
       )}
