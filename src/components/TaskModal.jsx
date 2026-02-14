@@ -20,6 +20,9 @@ import {
   SparklesIcon,
   ArrowTrendingUpIcon,
   MagnifyingGlassIcon,
+  CpuChipIcon,
+  PlayIcon,
+  QueueListIcon,
 } from "@heroicons/react/24/outline";
 import MarkdownRenderer from "./MarkdownRenderer";
 import { useTaskStore } from "../stores/taskStore";
@@ -35,13 +38,15 @@ import {
   STATUS_CONFIG,
   TASK_TYPE_CONFIG,
 } from "../utils/constants";
-import { api } from "../api/client";
+import { api, getTaskSubagents } from "../api/client";
 import {
   formatDateTimeLocal,
   parseDatabaseDate,
   classNames,
+  stripMarkdown,
+  truncateText,
 } from "../utils/helpers";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 
 // Icon component mapping for task types
 const ICON_MAP = {
@@ -110,7 +115,14 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
   const [loadingSubtasks, setLoadingSubtasks] = useState(false);
   const [subtasksLoaded, setSubtasksLoaded] = useState(false);
 
-  // Active tab index (0: Comments, 1: History, 2: Activity)
+  // Subagents data
+  const [subagents, setSubagents] = useState([]);
+  const [subagentsMeta, setSubagentsMeta] = useState(null);
+  const [loadingSubagents, setLoadingSubagents] = useState(false);
+  const [subagentsLoaded, setSubagentsLoaded] = useState(false);
+  const [selectedOutcome, setSelectedOutcome] = useState(null);
+
+  // Active tab index (0: Comments, 1: History, 2: Activity, 3: Subagents)
   const [activeTab, setActiveTab] = useState(0);
 
   // Users list for assignee dropdown
@@ -318,6 +330,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
         setCommentsLoaded(false);
         setDependenciesLoaded(false);
         setSubtasksLoaded(false);
+        setSubagentsLoaded(false);
         setComments([]);
         setCommentDraft("");
         setDependencies({ depends_on: [], dependents: [] });
@@ -358,6 +371,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
         setCommentsLoaded(false);
         setDependenciesLoaded(false);
         setSubtasksLoaded(false);
+        setSubagentsLoaded(false);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -392,6 +406,27 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
       logger.error("Failed to load activity", error);
     } finally {
       setLoadingActivity(false);
+    }
+  };
+
+  const loadSubagents = async (taskId) => {
+    // Don't reload if already loaded
+    if (subagentsLoaded) return;
+
+    setLoadingSubagents(true);
+    try {
+      const response = await getTaskSubagents(taskId);
+      setSubagents(response.data || []);
+      setSubagentsMeta(response.meta || null);
+      setSubagentsLoaded(true);
+    } catch (error) {
+      logger.error("Failed to load subagents", error);
+      // Don't show toast for errors - graceful degradation
+      if (error.response?.status !== 503) {
+        showToast("Failed to load subagent status", "error");
+      }
+    } finally {
+      setLoadingSubagents(false);
     }
   };
 
@@ -550,7 +585,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
     // Only load data if we have a task and are in view mode
     if (!internalTask || mode !== "view") return;
 
-    // Tab indices: 0 = Comments, 1 = History, 2 = Activity
+    // Tab indices: 0 = Comments, 1 = History, 2 = Activity, 3 = Subagents
     if (index === 0 && !commentsLoaded) {
       loadComments(internalTask.id);
     } else if (index === 1 && !historyLoaded) {
@@ -559,6 +594,9 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
     } else if (index === 2 && !activityLoaded) {
       // Activity tab clicked - load activity
       loadActivity(internalTask.id);
+    } else if (index === 3 && !subagentsLoaded) {
+      // Subagents tab clicked - load subagents
+      loadSubagents(internalTask.id);
     }
   };
 
@@ -1789,6 +1827,19 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                           <BoltIcon className="w-4 h-4" />
                           Activity
                         </Tab>
+                        <Tab
+                          className={({ selected }) =>
+                            `pb-3 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-2
+                          ${
+                            selected
+                              ? "border-primary-500 text-primary-400"
+                              : "border-transparent text-dark-400 hover:text-dark-200 hover:border-dark-600"
+                          }`
+                          }
+                        >
+                          <CpuChipIcon className="w-4 h-4" />
+                          Subagents
+                        </Tab>
                       </Tab.List>
                       <Tab.Panels>
                         {/* Comments Panel */}
@@ -2270,8 +2321,179 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                             </div>
                           )}
                         </Tab.Panel>
+
+                        {/* Subagents Panel */}
+                        <Tab.Panel>
+                          <div className="space-y-4 min-h-[200px]">
+                            {!internalTask || mode !== "view" ? (
+                              <div className="text-center py-12">
+                                <p className="text-dark-400">
+                                  Save this task to view subagent status
+                                </p>
+                              </div>
+                            ) : loadingSubagents ? (
+                              <div className="flex items-center justify-center py-12">
+                                <div className="flex items-center gap-3">
+                                  <ArrowPathIcon className="w-5 h-5 text-primary-400 animate-spin" />
+                                  <span className="text-dark-400">Loading subagent status...</span>
+                                </div>
+                              </div>
+                            ) : subagents.length === 0 ? (
+                              <div className="text-center py-12">
+                                <CpuChipIcon className="w-12 h-12 text-dark-600 mx-auto mb-3" />
+                                <p className="text-dark-400">No subagent executions yet</p>
+                                <p className="text-xs text-dark-500 mt-1">
+                                  Subagent attempts will appear here when they are spawned
+                                </p>
+                              </div>
+                            ) : (
+                              <>
+                                {/* Status Summary */}
+                                {subagentsMeta && (
+                                  <div className="flex gap-3 mb-4">
+                                    <div className="px-3 py-2 bg-dark-800/40 border border-dark-700/50 rounded-lg flex items-center gap-2">
+                                      <PlayIcon className="w-4 h-4 text-green-400" />
+                                      <span className="text-xs text-dark-400">Running: {subagentsMeta.running}</span>
+                                    </div>
+                                    <div className="px-3 py-2 bg-dark-800/40 border border-dark-700/50 rounded-lg flex items-center gap-2">
+                                      <QueueListIcon className="w-4 h-4 text-yellow-400" />
+                                      <span className="text-xs text-dark-400">Queued: {subagentsMeta.queued}</span>
+                                    </div>
+                                    <div className="px-3 py-2 bg-dark-800/40 border border-dark-700/50 rounded-lg flex items-center gap-2">
+                                      <CheckCircleIcon className="w-4 h-4 text-blue-400" />
+                                      <span className="text-xs text-dark-400">Completed: {subagentsMeta.completed}</span>
+                                    </div>
+                                    {subagentsMeta.failed > 0 && (
+                                      <div className="px-3 py-2 bg-dark-800/40 border border-dark-700/50 rounded-lg flex items-center gap-2">
+                                        <ExclamationTriangleIcon className="w-4 h-4 text-red-400" />
+                                        <span className="text-xs text-dark-400">Failed: {subagentsMeta.failed}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Attempts List */}
+                                <div className="space-y-3">
+                                  {subagents.map((attempt, idx) => {
+                                    const statusConfig = {
+                                      running: { color: "text-green-400", bgColor: "bg-green-500/10", label: "Running" },
+                                      queued: { color: "text-yellow-400", bgColor: "bg-yellow-500/10", label: "Queued" },
+                                      completed: { color: "text-blue-400", bgColor: "bg-blue-500/10", label: "Completed" },
+                                      failed: { color: "text-red-400", bgColor: "bg-red-500/10", label: "Failed" },
+                                      unknown: { color: "text-dark-400", bgColor: "bg-dark-500/10", label: "Unknown" },
+                                    };
+                                    const config = statusConfig[attempt.status] || statusConfig.unknown;
+
+                                    const startTime = attempt.startedAt || attempt.queuedAt || attempt.completedAt;
+                                    const timeLabel = startTime 
+                                      ? formatDistanceToNow(new Date(startTime), { addSuffix: true })
+                                      : "Unknown time";
+
+                                    return (
+                                      <div 
+                                        key={attempt.sessionKey || attempt.sessionLabel || idx}
+                                        className="p-4 bg-dark-800/40 border border-dark-700/50 rounded-lg"
+                                      >
+                                        <div className="flex items-start justify-between mb-3">
+                                          <div className="flex items-center gap-3">
+                                            <span className={`px-2 py-1 ${config.bgColor} ${config.color} text-xs font-medium rounded`}>
+                                              {config.label}
+                                            </span>
+                                            {attempt.model && (
+                                              <span className="text-xs text-dark-500">
+                                                {attempt.model}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <time className="text-xs text-dark-500">{timeLabel}</time>
+                                        </div>
+
+                                        {attempt.sessionLabel && (
+                                          <div className="text-xs text-dark-500 mb-2 font-mono">
+                                            {attempt.sessionLabel}
+                                          </div>
+                                        )}
+
+                                        {attempt.outcome && (
+                                          <div className="mt-3">
+                                            <button
+                                              type="button"
+                                              onClick={() => setSelectedOutcome(attempt.outcome)}
+                                              className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1"
+                                            >
+                                              View outcome →
+                                            </button>
+                                          </div>
+                                        )}
+
+                                        {attempt.tokensUsed && (
+                                          <div className="text-xs text-dark-500 mt-2">
+                                            Tokens: {attempt.tokensUsed.toLocaleString()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </Tab.Panel>
                       </Tab.Panels>
                     </Tab.Group>
+
+                    {/* Outcome Modal */}
+                    <Transition appear show={selectedOutcome !== null} as={Fragment}>
+                      <Dialog
+                        as="div"
+                        className="relative z-50"
+                        onClose={() => setSelectedOutcome(null)}
+                      >
+                        <Transition.Child
+                          as={Fragment}
+                          enter="ease-out duration-300"
+                          enterFrom="opacity-0"
+                          enterTo="opacity-100"
+                          leave="ease-in duration-200"
+                          leaveFrom="opacity-100"
+                          leaveTo="opacity-0"
+                        >
+                          <div className="fixed inset-0 bg-black/60" />
+                        </Transition.Child>
+
+                        <div className="fixed inset-0 overflow-y-auto">
+                          <div className="flex min-h-full items-center justify-center p-4">
+                            <Transition.Child
+                              as={Fragment}
+                              enter="ease-out duration-300"
+                              enterFrom="opacity-0 scale-95"
+                              enterTo="opacity-100 scale-100"
+                              leave="ease-in duration-200"
+                              leaveFrom="opacity-100 scale-100"
+                              leaveTo="opacity-0 scale-95"
+                            >
+                              <Dialog.Panel className="w-full max-w-3xl transform overflow-hidden rounded-xl bg-dark-900 border border-dark-700 p-6 text-left align-middle shadow-xl transition-all">
+                                <div className="flex items-center justify-between mb-4">
+                                  <Dialog.Title className="text-lg font-semibold text-white">
+                                    Subagent Outcome
+                                  </Dialog.Title>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedOutcome(null)}
+                                    className="text-dark-400 hover:text-white transition-colors"
+                                  >
+                                    <XMarkIcon className="w-5 h-5" />
+                                  </button>
+                                </div>
+                                <div className="prose prose-invert max-w-none">
+                                  <MarkdownRenderer content={selectedOutcome || ""} />
+                                </div>
+                              </Dialog.Panel>
+                            </Transition.Child>
+                          </div>
+                        </div>
+                      </Dialog>
+                    </Transition>
 
                     {/* Actions */}
                     <div className="flex items-center justify-between pt-6 border-t border-dark-800 mt-6">

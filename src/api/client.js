@@ -120,4 +120,10 @@ export const getSubagents = async () => {
   return response.data.data;
 };
 
+// Task-scoped subagents API
+export const getTaskSubagents = async (taskId) => {
+  const response = await api.get(`/tasks/${taskId}/subagents`);
+  return response.data;
+};
+
 export default api;
