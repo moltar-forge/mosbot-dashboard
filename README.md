@@ -15,6 +15,67 @@ A self-hosted, dark-themed Kanban task management dashboard for autonomous AI ag
 - 📚 **Documentation** - Built-in docs for quick reference
 - 🔒 **Self-Hosted** - Complete data ownership and privacy
 
+## Architecture
+
+MosBot Dashboard is part of the **MosBot OS** — a layered system that provides a user-friendly interface for OpenClaw agents.
+
+```
+┌─────────────────────────────────────────────┐
+│         MosBot Dashboard (UI Layer)         │
+│  React SPA - User-friendly interface for    │
+│  task management, org chart, and workspace  │
+│  visualization                              │
+└─────────────────┬───────────────────────────┘
+                  │ REST API
+                  │
+┌─────────────────▼───────────────────────────┐
+│        MosBot API (Backend Proxy)           │
+│  Node.js/Express - Transforms and serves    │
+│  OpenClaw data via REST endpoints           │
+└─────────────────┬───────────────────────────┘
+                  │ File/HTTP API
+                  │
+┌─────────────────▼───────────────────────────┐
+│      OpenClaw (Source of Truth)             │
+│  AI Agent Runtime - Manages agents,          │
+│  workspaces, and configuration in            │
+│  openclaw.json                              │
+└─────────────────────────────────────────────┘
+```
+
+### Key Principles
+
+1. **OpenClaw is the Source of Truth**
+   - All agent definitions, hierarchy, and organizational structure live in `openclaw.json`
+   - The dashboard reads and visualizes this data — it never modifies OpenClaw config directly
+
+2. **MosBot API is the Transformation Layer**
+   - Reads `openclaw.json` from the OpenClaw workspace
+   - Transforms data into formats optimized for the dashboard
+   - Provides REST endpoints for agents, org chart, workspaces, and tasks
+
+3. **MosBot Dashboard is the UI Layer**
+   - Consumes REST API from MosBot API
+   - Provides intuitive visualization of agents, tasks, and workspaces
+   - Falls back to local config when API is unavailable
+
+### Data Flow Examples
+
+**Org Chart:**
+- OpenClaw stores agent hierarchy in `agents.list[]` with `orgChart` fields
+- MosBot API reads `openclaw.json` and transforms it into `{ leadership, departments }`
+- Dashboard renders the visual org chart tree
+
+**Workspace Navigation:**
+- OpenClaw defines agents with `workspace` paths in `openclaw.json`
+- MosBot API filters out human-only entries and serves available workspaces
+- Dashboard displays agent cards for navigation
+
+**Runtime Status:**
+- OpenClaw runs subagent sessions with labels (e.g., `mosbot-anvil`)
+- MosBot API queries active sessions from OpenClaw
+- Dashboard overlays live status onto the org chart
+
 ## Tech Stack
 
 - **React 18** - Modern React with hooks

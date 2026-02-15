@@ -114,7 +114,7 @@ describe("MarkdownRenderer", () => {
     const content = "- **Convention file**: `docs/WORKSPACE_CONVENTIONS.md`";
     const { container } = renderWithRouter(<MarkdownRenderer content={content} size="sm" />);
     
-    const link = container.querySelector('a[href="/workspace/docs/WORKSPACE_CONVENTIONS.md"]');
+    const link = container.querySelector('a[href="/workspaces/docs/WORKSPACE_CONVENTIONS.md"]');
     expect(link).toBeTruthy();
     expect(link.textContent).toBe("docs/WORKSPACE_CONVENTIONS.md");
     
@@ -152,7 +152,7 @@ describe("MarkdownRenderer", () => {
     const content = "Use `docs/WORKSPACE_CONVENTIONS.md` for conventions";
     const { container } = renderWithRouter(<MarkdownRenderer content={content} size="sm" />);
     
-    const link = container.querySelector('a[href="/workspace/docs/WORKSPACE_CONVENTIONS.md"]');
+    const link = container.querySelector('a[href="/workspaces/docs/WORKSPACE_CONVENTIONS.md"]');
     expect(link).toBeTruthy();
     expect(link.textContent).toBe("docs/WORKSPACE_CONVENTIONS.md");
     
@@ -183,7 +183,7 @@ describe("MarkdownRenderer", () => {
     const content = "Use `docs/WORKSPACE_CONVENTIONS.md` for conventions";
     const { container } = renderWithRouter(<MarkdownRenderer content={content} size="sm" />);
     
-    const link = container.querySelector('a[href="/workspace/docs/WORKSPACE_CONVENTIONS.md"]');
+    const link = container.querySelector('a[href="/workspaces/docs/WORKSPACE_CONVENTIONS.md"]');
     expect(link).toBeTruthy();
     expect(link.textContent).toBe("docs/WORKSPACE_CONVENTIONS.md");
     expect(link.textContent).not.toContain("`");
@@ -197,7 +197,7 @@ describe("MarkdownRenderer", () => {
     const content = "- Before creating any new file, verify its placement against `docs/WORKSPACE_CONVENTIONS.md`.";
     const { container } = renderWithRouter(<MarkdownRenderer content={content} size="sm" />);
     
-    const link = container.querySelector('a[href="/workspace/docs/WORKSPACE_CONVENTIONS.md"]');
+    const link = container.querySelector('a[href="/workspaces/docs/WORKSPACE_CONVENTIONS.md"]');
     expect(link).toBeTruthy();
     expect(link.textContent).toBe("docs/WORKSPACE_CONVENTIONS.md");
     
@@ -210,7 +210,7 @@ describe("MarkdownRenderer", () => {
     const content = `- Before creating any new file, verify its placement against \`docs/WORKSPACE_CONVENTIONS.md\` .`;
     const { container } = renderWithRouter(<MarkdownRenderer content={content} size="sm" />);
     
-    const link = container.querySelector('a[href="/workspace/docs/WORKSPACE_CONVENTIONS.md"]');
+    const link = container.querySelector('a[href="/workspaces/docs/WORKSPACE_CONVENTIONS.md"]');
     expect(link).toBeTruthy();
     expect(link.textContent).toBe("docs/WORKSPACE_CONVENTIONS.md");
     expect(container.textContent).not.toContain("`");

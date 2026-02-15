@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState, Fragment, Suspense, lazy } from 'react';
+import { useState, Fragment, Suspense, lazy, useEffect } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import {
   ChartBarIcon,
@@ -12,28 +12,42 @@ import {
   ArrowRightOnRectangleIcon,
   UserIcon,
   CpuChipIcon,
+  RectangleGroupIcon,
+  ChartPieIcon,
 } from '@heroicons/react/24/outline';
 import { classNames } from '../utils/helpers';
 import { useAuthStore } from '../stores/authStore';
+import { useAgentStore } from '../stores/agentStore';
 
 const BotAvatar = lazy(() => import('./BotAvatar'));
-
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: ChartBarIcon },
-  { name: 'Subagents', href: '/subagents', icon: CpuChipIcon },
-  { name: 'Workspace', href: '/workspace', icon: FolderIcon },
-  { name: 'Log', href: '/log', icon: ClipboardDocumentListIcon },
-  { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, subpages: [
-    { name: 'Users', href: '/settings/users', icon: UserIcon },
-  ]},
-  { name: 'Archived', href: '/archived', icon: ArchiveBoxIcon },
-];
 
 export default function Sidebar({ onCloseMobile }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const { getDefaultAgent, fetchAgents, agents } = useAgentStore();
   const [expandedItems, setExpandedItems] = useState({});
+
+  // Fetch agents on mount for dynamic navigation
+  useEffect(() => {
+    if (agents.length === 0) {
+      fetchAgents();
+    }
+  }, [agents.length, fetchAgents]);
+
+  // Dynamic navigation with agent-aware workspace link
+  const navigation = [
+    { name: 'Task Manager', href: '/tasks/overview', icon: ChartPieIcon },
+    { name: 'Kanban', href: '/tasks/kanban', icon: RectangleGroupIcon },
+    { name: 'Org Chart', href: '/tasks/org-chart', icon: ChartBarIcon },
+    { name: 'Subagents', href: '/subagents', icon: CpuChipIcon },
+    { name: 'Workspaces', href: `/workspaces/${getDefaultAgent()?.id || 'coo'}`, icon: FolderIcon },
+    { name: 'Log', href: '/log', icon: ClipboardDocumentListIcon },
+    { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, subpages: [
+      { name: 'Users', href: '/settings/users', icon: UserIcon },
+    ]},
+    { name: 'Archived', href: '/archived', icon: ArchiveBoxIcon },
+  ];
 
   const handleLogout = () => {
     logout();
@@ -70,12 +84,12 @@ export default function Sidebar({ onCloseMobile }) {
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navigation.map((item) => {
             const hasSubpages = item.subpages && item.subpages.length > 0;
-            // For items with subpages, only highlight parent if exactly on the parent route
+            // For items with subpages, highlight parent if any subpage is active
             // For items without subpages, highlight if on the route
             const isActive = hasSubpages 
-              ? location.pathname === item.href
-              : item.href === '/workspace'
-                ? location.pathname.startsWith('/workspace')
+              ? location.pathname.startsWith('/settings')
+              : item.href === '/workspaces'
+                ? location.pathname.startsWith('/workspaces')
                 : location.pathname === item.href;
             const isExpanded = expandedItems[item.name] || (item.subpages && item.subpages.some(sub => location.pathname === sub.href));
 

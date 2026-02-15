@@ -1,5 +1,6 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Menu, Transition } from '@headlessui/react';
 import { 
   ArrowPathIcon, 
   Squares2X2Icon,
@@ -9,7 +10,8 @@ import {
   DocumentPlusIcon,
   FolderPlusIcon,
   ArrowUpIcon,
-  FolderIcon
+  FolderIcon,
+  ChevronUpDownIcon
 } from '@heroicons/react/24/outline';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useAuthStore } from '../stores/authStore';
@@ -22,6 +24,7 @@ import CreateFolderModal from './CreateFolderModal';
 import RenameModal from './RenameModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import { classNames } from '../utils/helpers';
+import { useAgentStore } from '../stores/agentStore';
 
 /**
  * Normalize a URL path segment to a workspace path.
@@ -39,8 +42,9 @@ function normalizeFilePathParam(pathParam) {
   return { path: path.replace(/\/+$/, '') || '/', isDirectory };
 }
 
-export default function WorkspaceExplorer({ initialFilePath = null }) {
+export default function WorkspaceExplorer({ agentId = 'coo', agent, initialFilePath = null }) {
   const navigate = useNavigate();
+  const { agents } = useAgentStore();
   const {
     listings,
     isLoadingListing,
@@ -48,9 +52,11 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
     listingErrors,
     selectedFile,
     currentPath,
+    workspaceRootPath,
     fetchListing,
     setSelectedFile,
     setCurrentPath,
+    setWorkspaceRootPath,
     clearErrors,
     moveFile
   } = useWorkspaceStore();
@@ -76,22 +82,35 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
   
   const canModify = isAdmin();
   
+  // Initialize workspace root path when agent changes
+  useEffect(() => {
+    if (agent?.workspaceRootPath) {
+      setWorkspaceRootPath(agent.workspaceRootPath);
+    }
+  }, [agent?.workspaceRootPath, setWorkspaceRootPath]);
+  
   // Always fetch non-recursively (one level at a time)
   const recursive = false;
-  const cacheKey = `${currentPath}:${recursive}`;
+  const cacheKey = `${agentId}:${currentPath}:${recursive}`;
   const currentListing = listings[cacheKey];
   const currentListingError = listingErrors?.[cacheKey] || listingError;
   
-  // Build children cache from all loaded listings
+  // Build children cache from all loaded listings for current agent
   const childrenCache = useMemo(() => {
     const cache = {};
     Object.entries(listings).forEach(([key, listing]) => {
-      // Extract path from cache key (format: "path:recursive")
-      const [path] = key.split(':');
-      cache[path] = listing.files || [];
+      // Extract agentId and path from cache key (format: "agentId:path:recursive")
+      const parts = key.split(':');
+      const keyAgentId = parts[0];
+      const path = parts[1];
+      
+      // Only cache listings for current agent
+      if (keyAgentId === agentId) {
+        cache[path] = listing.files || [];
+      }
     });
     return cache;
-  }, [listings]);
+  }, [listings, agentId]);
   
   // Sync URL path to selection on mount or when navigating via link
   const normalizedPath = useMemo(
@@ -108,7 +127,7 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
       // Directory view (e.g. breadcrumb click): show folder contents, no file selected
       setCurrentPath(path);
       setSelectedFile(null);
-      fetchListing({ path, recursive: false }).catch(() => {});
+      fetchListing({ path, recursive: false, agentId }).catch(() => {});
     } else {
       // File view: select file and show parent in tree
       const lastSlash = path.lastIndexOf('/');
@@ -122,15 +141,15 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
         type: 'file'
       });
 
-      fetchListing({ path: parentPath, recursive: false }).catch(() => {});
+      fetchListing({ path: parentPath, recursive: false, agentId }).catch(() => {});
     }
-  }, [normalizedPath, setCurrentPath, setSelectedFile, fetchListing]);
+  }, [normalizedPath, setCurrentPath, setSelectedFile, fetchListing, agentId]);
 
   // Initial load
   useEffect(() => {
     // Avoid infinite retry loops: if this path/view already failed, wait for user action (refresh).
     if (!currentListing && !isLoadingListing && !currentListingError) {
-      fetchListing({ path: currentPath, recursive }).catch((error) => {
+      fetchListing({ path: currentPath, recursive, agentId }).catch((error) => {
         showToast(
           error.response?.data?.error?.message || 'Failed to load workspace',
           'error'
@@ -161,10 +180,10 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
       
       // Clear selected file to force refetch when reselected
       setSelectedFile(null);
-      navigate('/workspace', { replace: true });
+      navigate(`/workspaces/${agentId}`, { replace: true });
       
       // Fetch root level (or current path in flat view)
-      await fetchListing({ path: currentPath, recursive, force: true });
+      await fetchListing({ path: currentPath, recursive, force: true, agentId });
       showToast('Workspace refreshed', 'success');
     } catch (error) {
       showToast(
@@ -182,11 +201,11 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
     // Update URL so the link is shareable
     if (file.type === 'file') {
       const urlPath = file.path.startsWith('/') ? file.path : `/${file.path}`;
-      navigate(`/workspace${urlPath}`, { replace: true });
+      navigate(`/workspaces/${agentId}${urlPath}`, { replace: true });
     } else if (file.type === 'directory' && viewMode === 'flat') {
       // Trailing slash for directories so URL sync treats as directory view
       const urlPath = file.path === '/' ? '' : `${file.path}/`;
-      navigate(`/workspace${urlPath}`, { replace: true });
+      navigate(`/workspaces/${agentId}${urlPath}`, { replace: true });
     }
   };
   
@@ -195,7 +214,7 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
     setSelectedFile(null);
     // Use trailing slash for directories so URL sync treats it as directory view, not file
     const urlPath = path === '/' ? '' : `${path}/`;
-    navigate(`/workspace${urlPath}`, { replace: true });
+    navigate(`/workspaces/${agentId}${urlPath}`, { replace: true });
   };
   
   const handleGoUpOneLevel = () => {
@@ -208,14 +227,14 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
     setSelectedFile(null);
-    navigate('/workspace', { replace: true });
+    navigate(`/workspaces/${agentId}`, { replace: true });
   };
   
   // Fetch children for a folder (on-demand loading for tree view)
   const handleFetchChildren = async (folderPath) => {
     setLoadingPaths(prev => new Set([...prev, folderPath]));
     try {
-      await fetchListing({ path: folderPath, recursive: false });
+      await fetchListing({ path: folderPath, recursive: false, agentId });
     } catch (error) {
       showToast(
         error.response?.data?.error?.message || `Failed to load ${folderPath}`,
@@ -235,7 +254,7 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
     const path = '/' + arr.slice(0, index + 1).join('/');
     acc.push({ name: part, path });
     return acc;
-  }, [{ name: 'workspace', path: '/' }]);
+  }, [{ name: 'workspaces', path: '/' }]);
   
   // Filter files by search query
   const filteredFiles = currentListing?.files?.filter((file) => {
@@ -287,19 +306,19 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
     setSelectedFile(file);
     if (file.type === 'file') {
       const urlPath = file.path.startsWith('/') ? file.path : `/${file.path}`;
-      navigate(`/workspace${urlPath}`, { replace: true });
+      navigate(`/workspaces/${agentId}${urlPath}`, { replace: true });
     }
   };
 
-  // When path was opened as file but is actually a directory (e.g. refresh on /workspace/skills)
+  // When path was opened as file but is actually a directory (e.g. refresh on /workspaces/agentId/skills)
   const handlePathIsDirectory = useCallback((path) => {
     useWorkspaceStore.getState().clearErrors();
-    useWorkspaceStore.getState().clearContentCache(path);
+    useWorkspaceStore.getState().clearContentCache(path, agentId);
     setCurrentPath(path);
     setSelectedFile(null);
     const urlPath = path === '/' ? '' : `${path}/`;
-    navigate(`/workspace${urlPath}`, { replace: true });
-  }, [setCurrentPath, setSelectedFile, navigate]);
+    navigate(`/workspaces/${agentId}${urlPath}`, { replace: true });
+  }, [setCurrentPath, setSelectedFile, navigate, agentId]);
   
   // Drag and drop handlers
   const handleDragStart = (_node) => {
@@ -345,9 +364,9 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
       
       // Refresh both source and destination directories
       const sourceParent = draggedNode.path.substring(0, draggedNode.path.lastIndexOf('/')) || '/';
-      await fetchListing({ path: sourceParent, force: true });
+      await fetchListing({ path: sourceParent, force: true, agentId });
       if (sourceParent !== targetNode.path) {
-        await fetchListing({ path: targetNode.path, force: true });
+        await fetchListing({ path: targetNode.path, force: true, agentId });
       }
     } catch (error) {
       showToast(error.message || 'Failed to move file', 'error');
@@ -386,8 +405,55 @@ export default function WorkspaceExplorer({ initialFilePath = null }) {
       {/* Toolbar */}
       <div className="px-4 py-3 border-b border-dark-800 bg-dark-900">
         <div className="flex items-center justify-between gap-4">
-          {/* Left: Breadcrumbs for navigation (both modes) */}
-          <div className="flex items-center gap-2 min-w-0">
+          {/* Left: Agent selector + Breadcrumbs for navigation (both modes) */}
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Agent Selector */}
+            <Menu as="div" className="relative flex-shrink-0">
+              <Menu.Button className="flex items-center gap-2 px-3 py-1.5 bg-dark-800 border border-dark-700 rounded hover:bg-dark-750 transition-colors">
+                <span className="text-lg">{agent?.icon || '🤖'}</span>
+                <span className="text-sm font-medium text-dark-200">{agent?.name || 'Agent'}</span>
+                <ChevronUpDownIcon className="w-4 h-4 text-dark-400" />
+              </Menu.Button>
+              <Transition
+                as={Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="transform opacity-0 scale-95"
+                enterTo="transform opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 scale-100"
+                leaveTo="transform opacity-0 scale-95"
+              >
+                <Menu.Items className="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-dark-850 border border-dark-700 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <div className="py-1">
+                    {agents.map((workspace) => (
+                      <Menu.Item key={workspace.id}>
+                        {({ active }) => (
+                          <button
+                            onClick={() => navigate(`/workspaces/${workspace.id}`)}
+                            className={classNames(
+                              'flex items-center gap-3 w-full px-4 py-2 text-sm text-left',
+                              active ? 'bg-dark-800 text-white' : 'text-dark-200',
+                              workspace.id === agentId && 'bg-primary-900/30 text-primary-300'
+                            )}
+                          >
+                            <span className="text-lg">{workspace.icon}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate">{workspace.name}</div>
+                              <div className="text-xs text-dark-400 truncate">{workspace.description}</div>
+                            </div>
+                          </button>
+                        )}
+                      </Menu.Item>
+                    ))}
+                  </div>
+                </Menu.Items>
+              </Transition>
+            </Menu>
+            
+            <div className="w-px h-6 bg-dark-700" />
+          </div>
+          
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <nav className="flex items-center gap-1 text-sm">
               {breadcrumbs.map((crumb, index) => (
                 <div key={crumb.path} className="flex items-center gap-1">

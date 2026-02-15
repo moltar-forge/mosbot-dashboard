@@ -4,13 +4,13 @@ import logger from '../utils/logger';
 
 export const useWorkspaceStore = create((set, get) => ({
   // Listing state
-  listings: {}, // Cache keyed by `${path}:${recursive}`
+  listings: {}, // Cache keyed by `${agentId}:${path}:${recursive}`
   isLoadingListing: false,
   listingError: null,
-  listingErrors: {}, // Errors keyed by `${path}:${recursive}` to prevent infinite retry loops
+  listingErrors: {}, // Errors keyed by `${agentId}:${path}:${recursive}` to prevent infinite retry loops
   
   // File content state
-  fileContents: {}, // Cache keyed by path
+  fileContents: {}, // Cache keyed by `${agentId}:${path}`
   isLoadingContent: false,
   contentError: null,
   
@@ -18,10 +18,20 @@ export const useWorkspaceStore = create((set, get) => ({
   selectedFile: null,
   currentPath: '/',
   
+  // Agent workspace root
+  workspaceRootPath: '', // e.g. '/workspaces/main'
+  
+  // Set workspace root path (prefix for all API calls)
+  setWorkspaceRootPath: (rootPath) => {
+    set({ workspaceRootPath: rootPath || '' });
+  },
+  
   // Fetch workspace file listing
-  fetchListing: async ({ path = '/', recursive = false, force = false }) => {
-    const cacheKey = `${path}:${recursive}`;
+  fetchListing: async ({ path = '/', recursive = false, force = false, agentId = 'coo' }) => {
     const state = get();
+    const rootPath = state.workspaceRootPath;
+    const fullPath = rootPath ? `${rootPath}${path}` : path;
+    const cacheKey = `${agentId}:${path}:${recursive}`;
     
     // Return cached if available and not forced
     if (!force && state.listings[cacheKey]) {
@@ -39,15 +49,26 @@ export const useWorkspaceStore = create((set, get) => ({
     
     try {
       const response = await api.get('/openclaw/workspace/files', {
-        params: { path, recursive: recursive ? 'true' : 'false' }
+        params: { path: fullPath, recursive: recursive ? 'true' : 'false' }
       });
       
       const data = response.data.data;
       
+      // Strip the rootPath prefix from returned file paths so they're relative to agent root
+      const normalizedData = {
+        ...data,
+        files: (data.files || []).map(file => ({
+          ...file,
+          path: rootPath && file.path.startsWith(rootPath) 
+            ? file.path.substring(rootPath.length) || '/'
+            : file.path
+        }))
+      };
+      
       set((state) => ({
         listings: {
           ...state.listings,
-          [cacheKey]: data
+          [cacheKey]: normalizedData
         },
         isLoadingListing: false,
         listingError: null,
@@ -57,7 +78,7 @@ export const useWorkspaceStore = create((set, get) => ({
         },
       }));
       
-      return data;
+      return normalizedData;
     } catch (error) {
       const errorMessage = error.response?.data?.error?.message 
         || error.message 
@@ -77,19 +98,22 @@ export const useWorkspaceStore = create((set, get) => ({
   },
   
   // Fetch file content
-  fetchFileContent: async ({ path, force = false }) => {
+  fetchFileContent: async ({ path, force = false, agentId = 'coo' }) => {
     const state = get();
+    const rootPath = state.workspaceRootPath;
+    const fullPath = rootPath ? `${rootPath}${path}` : path;
+    const cacheKey = `${agentId}:${path}`;
     
     // Return cached if available and not forced
-    if (!force && state.fileContents[path]) {
-      return state.fileContents[path];
+    if (!force && state.fileContents[cacheKey]) {
+      return state.fileContents[cacheKey];
     }
     
     set({ isLoadingContent: true, contentError: null });
     
     try {
       const response = await api.get('/openclaw/workspace/files/content', {
-        params: { path }
+        params: { path: fullPath }
       });
       
       const data = response.data.data;
@@ -97,7 +121,7 @@ export const useWorkspaceStore = create((set, get) => ({
       set((state) => ({
         fileContents: {
           ...state.fileContents,
-          [path]: data
+          [cacheKey]: data
         },
         isLoadingContent: false,
         contentError: null
@@ -129,12 +153,14 @@ export const useWorkspaceStore = create((set, get) => ({
   },
   
   // Clear cache for a specific path
-  clearListingCache: (path, recursive) => {
-    const cacheKey = `${path}:${recursive}`;
+  clearListingCache: (path, recursive, agentId = 'coo') => {
+    const cacheKey = `${agentId}:${path}:${recursive}`;
     set((state) => {
       const newListings = { ...state.listings };
       delete newListings[cacheKey];
-      return { listings: newListings };
+      const newListingErrors = { ...state.listingErrors };
+      delete newListingErrors[cacheKey];
+      return { listings: newListings, listingErrors: newListingErrors };
     });
   },
   
@@ -144,10 +170,11 @@ export const useWorkspaceStore = create((set, get) => ({
   },
   
   // Clear file content cache
-  clearContentCache: (path) => {
+  clearContentCache: (path, agentId = 'coo') => {
+    const cacheKey = `${agentId}:${path}`;
     set((state) => {
       const newContents = { ...state.fileContents };
-      delete newContents[path];
+      delete newContents[cacheKey];
       return { fileContents: newContents };
     });
   },
@@ -169,18 +196,22 @@ export const useWorkspaceStore = create((set, get) => ({
   },
   
   // Create a new file
-  createFile: async ({ path, content = '', encoding = 'utf8' }) => {
+  createFile: async ({ path, content = '', encoding = 'utf8', agentId = 'coo' }) => {
     try {
+      const state = get();
+      const rootPath = state.workspaceRootPath;
+      const fullPath = rootPath ? `${rootPath}${path}` : path;
+      
       const response = await api.post('/openclaw/workspace/files', {
-        path,
+        path: fullPath,
         content,
         encoding
       });
       
       // Invalidate parent directory cache after successful creation
       const parentPath = path.substring(0, path.lastIndexOf('/')) || '/';
-      get().clearListingCache(parentPath, false);
-      get().clearListingCache(parentPath, true);
+      get().clearListingCache(parentPath, false, agentId);
+      get().clearListingCache(parentPath, true, agentId);
       
       return response.data.data;
     } catch (error) {
@@ -192,19 +223,23 @@ export const useWorkspaceStore = create((set, get) => ({
   },
   
   // Update an existing file
-  updateFile: async ({ path, content, encoding = 'utf8' }) => {
+  updateFile: async ({ path, content, encoding = 'utf8', agentId = 'coo' }) => {
     try {
+      const state = get();
+      const rootPath = state.workspaceRootPath;
+      const fullPath = rootPath ? `${rootPath}${path}` : path;
+      
       const response = await api.put('/openclaw/workspace/files', {
-        path,
+        path: fullPath,
         content,
         encoding
       });
       
       // Invalidate file content cache and parent directory cache after successful update
-      get().clearContentCache(path);
+      get().clearContentCache(path, agentId);
       const parentPath = path.substring(0, path.lastIndexOf('/')) || '/';
-      get().clearListingCache(parentPath, false);
-      get().clearListingCache(parentPath, true);
+      get().clearListingCache(parentPath, false, agentId);
+      get().clearListingCache(parentPath, true, agentId);
       
       return response.data.data;
     } catch (error) {
@@ -216,17 +251,21 @@ export const useWorkspaceStore = create((set, get) => ({
   },
   
   // Delete a file or directory
-  deleteFile: async ({ path }) => {
+  deleteFile: async ({ path, agentId = 'coo' }) => {
     try {
+      const state = get();
+      const rootPath = state.workspaceRootPath;
+      const fullPath = rootPath ? `${rootPath}${path}` : path;
+      
       await api.delete('/openclaw/workspace/files', {
-        params: { path }
+        params: { path: fullPath }
       });
       
       // Invalidate caches after successful deletion
-      get().clearContentCache(path);
+      get().clearContentCache(path, agentId);
       const parentPath = path.substring(0, path.lastIndexOf('/')) || '/';
-      get().clearListingCache(parentPath, false);
-      get().clearListingCache(parentPath, true);
+      get().clearListingCache(parentPath, false, agentId);
+      get().clearListingCache(parentPath, true, agentId);
       
       // If deleted item was selected, clear selection
       const { selectedFile } = get();
@@ -244,20 +283,25 @@ export const useWorkspaceStore = create((set, get) => ({
   },
   
   // Create a new directory
-  createDirectory: async ({ path }) => {
+  createDirectory: async ({ path, agentId = 'coo' }) => {
     try {
+      const state = get();
+      const rootPath = state.workspaceRootPath;
+      
       // Create directory by creating a .gitkeep file inside it
       const gitkeepPath = `${path}/.gitkeep`;
+      const fullGitkeepPath = rootPath ? `${rootPath}${gitkeepPath}` : gitkeepPath;
+      
       const response = await api.post('/openclaw/workspace/files', {
-        path: gitkeepPath,
+        path: fullGitkeepPath,
         content: '',
         encoding: 'utf8'
       });
       
       // Invalidate parent directory cache after successful creation
       const parentPath = path.substring(0, path.lastIndexOf('/')) || '/';
-      get().clearListingCache(parentPath, false);
-      get().clearListingCache(parentPath, true);
+      get().clearListingCache(parentPath, false, agentId);
+      get().clearListingCache(parentPath, true, agentId);
       
       return response.data.data;
     } catch (error) {

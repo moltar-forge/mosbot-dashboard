@@ -122,16 +122,16 @@ export const classNames = (...classes) => {
  * Use with React Router's Link or for copying to clipboard.
  *
  * @param {string} filePath - Full workspace path, e.g. "/tasks/012-subagents-page/PRD.md"
- * @returns {string} - Route path like "/workspace/tasks/012-subagents-page/PRD.md"
+ * @returns {string} - Route path like "/workspaces/tasks/012-subagents-page/PRD.md"
  *
  * @example
  * <Link to={getWorkspaceFileUrl('/tasks/012-subagents-page/PRD.md')}>View PRD</Link>
  */
 export const getWorkspaceFileUrl = (filePath) => {
-  if (!filePath || typeof filePath !== 'string') return '/workspace';
+  if (!filePath || typeof filePath !== 'string') return '/workspaces';
   const normalized = filePath.trim().replace(/\/+/g, '/');
   const withSlash = normalized.startsWith('/') ? normalized : `/${normalized}`;
-  return `/workspace${withSlash}`;
+  return `/workspaces${withSlash}`;
 };
 
 /**

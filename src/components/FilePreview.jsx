@@ -62,7 +62,7 @@ export default function FilePreview({ file, onDelete, onPathIsDirectory }) {
             userRole: user?.role,
           });
         } else if (isDirAsFileErrorLocal && file?.name && !file.name.includes('.') && onPathIsDirectoryRef.current) {
-          // Path is a directory (e.g. refresh on /workspace/skills); redirect to directory view
+          // Path is a directory (e.g. refresh on /workspaces/skills); redirect to directory view
           onPathIsDirectoryRef.current(file.path);
         } else {
           logger.error('Failed to load file content', error, {
@@ -90,7 +90,7 @@ export default function FilePreview({ file, onDelete, onPathIsDirectory }) {
     setEditedContent('');
   }, [file?.path]);
 
-  // Redirect when contentError indicates path is a directory (e.g. refresh on /workspace/skills).
+  // Redirect when contentError indicates path is a directory (e.g. refresh on /workspaces/skills).
   // Only when file has no extension (paths like "skills" could be dirs; "PRD.md" is always a file).
   useEffect(() => {
     if (isDirAsFileError && pathLikelyDirectory && onPathIsDirectoryRef.current && file?.path) {

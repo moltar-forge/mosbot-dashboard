@@ -129,7 +129,7 @@ export default function Login() {
 
         {/* Footer */}
         <p className="text-center text-sm text-dark-500 mt-6">
-          MosBot Task Dashboard &copy; {new Date().getFullYear()}
+          MosBot OS &copy; {new Date().getFullYear()}
         </p>
       </div>
     </div>

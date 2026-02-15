@@ -1,7 +1,7 @@
 import axios from 'axios';
 import logger from '../utils/logger';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -114,10 +114,31 @@ api.interceptors.response.use(
   }
 );
 
-// OpenClaw Subagents API
+// OpenClaw Agents API - auto-discover agents from OpenClaw configuration
+export const getAgents = async () => {
+  const response = await api.get('/openclaw/agents');
+  return response.data.data;
+};
+
+// OpenClaw Subagents API - returns object with { running, queued, completed, retention }
 export const getSubagents = async () => {
   const response = await api.get('/openclaw/subagents');
   return response.data.data;
+};
+
+// Get active subagent sessions as a flat array - combines running and queued sessions
+// This is useful for components that need to iterate over sessions (e.g., OrgChart, TaskManagerOverview)
+export const getActiveSubagentSessions = async () => {
+  const response = await api.get('/openclaw/subagents');
+  const data = response.data.data;
+  
+  // Combine running and queued into a single array
+  const sessions = [
+    ...(data.running || []).map(s => ({ ...s, status: 'running' })),
+    ...(data.queued || []).map(s => ({ ...s, status: 'queued' })),
+  ];
+  
+  return sessions;
 };
 
 // Task-scoped subagents API
