@@ -227,6 +227,8 @@ export default function Settings() {
                                   ? 'bg-amber-900/30 text-amber-300'
                                   : user.role === 'admin'
                                   ? 'bg-purple-900/30 text-purple-300'
+                                  : user.role === 'agent'
+                                  ? 'bg-blue-900/30 text-blue-300'
                                   : 'bg-dark-700 text-dark-300'
                               }`}
                             >

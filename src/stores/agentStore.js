@@ -6,9 +6,9 @@ import logger from '../utils/logger';
 const fallbackAgents = [
   {
     id: 'coo',
-    name: 'MostBot',
-    label: 'MostBot (COO)',
-    description: 'operations director',
+    name: 'MosBot',
+    label: 'MosBot (COO)',
+    description: 'Chief Operating Officer and Task Orchestrator',
     workspaceRootPath: '/workspace-coo',
     icon: '📊',
     isDefault: true
@@ -17,7 +17,7 @@ const fallbackAgents = [
     id: 'cto',
     name: 'Elon',
     label: 'Elon (CTO)',
-    description: 'tech architect',
+    description: 'Tech Architect',
     workspaceRootPath: '/workspace-cto',
     icon: '💼',
     isDefault: false
@@ -26,7 +26,7 @@ const fallbackAgents = [
     id: 'cmo',
     name: 'Gary',
     label: 'Gary (CMO)',
-    description: 'marketing strategist',
+    description: 'Marketing Strategist',
     workspaceRootPath: '/workspace-cmo',
     icon: '📢',
     isDefault: false
@@ -35,7 +35,7 @@ const fallbackAgents = [
     id: 'cpo',
     name: 'Alex',
     label: 'Alex (CPO)',
-    description: 'product strategist',
+    description: 'Product Strategist',
     workspaceRootPath: '/workspace-cpo',
     icon: '💡',
     isDefault: false
@@ -52,8 +52,8 @@ export const useAgentStore = create((set, get) => ({
   fetchAgents: async () => {
     const state = get();
     
-    // Don't fetch if already loaded
-    if (state.isInitialized && state.agents.length > 0) {
+    // Don't fetch if already loading or already loaded
+    if (state.isLoading || (state.isInitialized && state.agents.length > 0)) {
       return state.agents;
     }
 
@@ -63,10 +63,11 @@ export const useAgentStore = create((set, get) => ({
       const agentsData = await getAgents();
       
       // Transform workspace paths to workspaceRootPath format for consistency
+      // Each agent's workspaceRootPath points to their specific workspace directory
       const agents = agentsData.map(agent => ({
         ...agent,
         workspaceRootPath: agent.workspace 
-          ? agent.workspace.replace('/home/node/.openclaw', '') 
+          ? `/workspace-${agent.id}` 
           : `/workspace-${agent.id}`,
       }));
 

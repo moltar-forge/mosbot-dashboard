@@ -43,8 +43,6 @@ import {
   formatDateTimeLocal,
   parseDatabaseDate,
   classNames,
-  stripMarkdown,
-  truncateText,
 } from "../utils/helpers";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -1915,6 +1913,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                         currentUser?.id === comment.author_id;
                                       const isAdminOrOwner =
                                         currentUser?.role === "admin" ||
+                                        currentUser?.role === "agent" ||
                                         currentUser?.role === "owner";
                                       const canEdit =
                                         isAuthor || isAdminOrOwner;

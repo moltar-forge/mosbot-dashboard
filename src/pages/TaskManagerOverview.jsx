@@ -1,77 +1,87 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { 
   PlayIcon, 
   ClockIcon, 
   ChartBarIcon, 
   CurrencyDollarIcon,
   CircleStackIcon,
+  ExclamationTriangleIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 import Header from '../components/Header';
 import StatCard from '../components/StatCard';
 import SessionList from '../components/SessionList';
-import { getActiveSubagentSessions } from '../api/client';
-import { useTaskStore } from '../stores/taskStore';
+import CronJobList from '../components/CronJobList';
+import { getOpenClawSessions, getCronJobs } from '../api/client';
+import { useBotStore } from '../stores/botStore';
 import logger from '../utils/logger';
 
 const SUBAGENT_POLLING_INTERVAL = 10000; // 10 seconds
-const METRICS_REFRESH_INTERVAL = 60000; // 60 seconds
 
 export default function TaskManagerOverview() {
-  const { tasks, fetchTasks } = useTaskStore();
+  const setSessionCounts = useBotStore((state) => state.setSessionCounts);
   const [subagents, setSubagents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [metrics, setMetrics] = useState({
-    totalTokens: 0,
-    totalCost: 0,
-  });
+  const [cronJobs, setCronJobs] = useState([]);
+  const [cronJobsLoading, setCronJobsLoading] = useState(true);
   
   const subagentPollingRef = useRef(null);
-  const metricsPollingRef = useRef(null);
 
-  // Fetch subagents
-  const loadSubagents = async () => {
+  // Fetch sessions from OpenClaw Gateway
+  const loadSubagents = useCallback(async () => {
     try {
-      const data = await getActiveSubagentSessions();
-      setSubagents(data || []);
+      const data = await getOpenClawSessions();
+      const sessions = data || [];
+      setSubagents(sessions);
       setError(null);
+      setSessionCounts({
+        running: sessions.filter(s => s.status === "running").length,
+        active: sessions.filter(s => s.status === "active").length,
+        idle: sessions.filter(s => s.status === "idle").length,
+        total: sessions.length,
+      });
     } catch (err) {
-      logger.error('Failed to fetch subagents', err);
+      logger.error("Failed to fetch sessions", err);
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [setSessionCounts]);
 
-  // Calculate metrics from tasks
-  const calculateMetrics = () => {
-    const totalTokens = tasks.reduce((sum, task) => {
-      return sum + 
-        (task.agent_tokens_input || 0) +
-        (task.agent_tokens_input_cache || 0) +
-        (task.agent_tokens_output || 0) +
-        (task.agent_tokens_output_cache || 0);
+  // Fetch cron job configuration (one-time, no polling needed)
+  const loadCronJobs = useCallback(async () => {
+    try {
+      setCronJobsLoading(true);
+      const data = await getCronJobs();
+      setCronJobs(data || []);
+    } catch (err) {
+      logger.error("Failed to fetch cron jobs", err);
+    } finally {
+      setCronJobsLoading(false);
+    }
+  }, []);
+
+  // Calculate metrics from sessions
+  const metrics = useMemo(() => {
+    const totalTokens = subagents.reduce((sum, session) => {
+      return sum + (session.inputTokens || 0) + (session.outputTokens || 0);
     }, 0);
 
-    const totalCost = tasks.reduce((sum, task) => {
-      return sum + (task.agent_cost_usd || 0);
+    const totalCost = subagents.reduce((sum, session) => {
+      return sum + (session.messageCost || 0);
     }, 0);
 
-    setMetrics({ totalTokens, totalCost });
-  };
+    return { totalTokens, totalCost };
+  }, [subagents]);
 
   // Initial load
   useEffect(() => {
     loadSubagents();
-    fetchTasks({ silent: true });
-  }, [fetchTasks]);
+    loadCronJobs();
+  }, [loadSubagents, loadCronJobs]);
 
-  // Calculate metrics when tasks change
-  useEffect(() => {
-    calculateMetrics();
-  }, [tasks]);
-
-  // Polling for subagents
+  // Polling for subagents (metrics are derived from sessions)
   useEffect(() => {
     subagentPollingRef.current = setInterval(() => {
       loadSubagents();
@@ -82,27 +92,13 @@ export default function TaskManagerOverview() {
         clearInterval(subagentPollingRef.current);
       }
     };
-  }, []);
-
-  // Polling for metrics (less frequent)
-  useEffect(() => {
-    metricsPollingRef.current = setInterval(() => {
-      fetchTasks({ silent: true });
-    }, METRICS_REFRESH_INTERVAL);
-
-    return () => {
-      if (metricsPollingRef.current) {
-        clearInterval(metricsPollingRef.current);
-      }
-    };
-  }, [fetchTasks]);
+  }, [loadSubagents]);
 
   // Refresh when tab becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         loadSubagents();
-        fetchTasks({ silent: true });
       }
     };
 
@@ -111,23 +107,56 @@ export default function TaskManagerOverview() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchTasks]);
+  }, [loadSubagents]);
 
   const handleRefresh = async () => {
     setIsLoading(true);
-    await Promise.all([
-      loadSubagents(),
-      fetchTasks({ silent: false }),
-    ]);
+    await loadSubagents();
   };
 
-  // Calculate KPIs
-  const activeCount = subagents.filter(s => s.status === 'running').length;
-  const idleCount = subagents.filter(s => s.status === 'queued').length;
-  const totalSessions = subagents.length;
+  // Calculate session KPIs
+  const runningCount = subagents.filter(s => s.status === "running").length;
+  const activeCount = subagents.filter(s => s.status === "active").length;
+  const idleCount = subagents.filter(s => s.status === "idle").length;
+
+  // Calculate cron job health metrics
+  const cronJobIssues = useMemo(() => {
+    let issueCount = 0;
+    cronJobs.forEach(job => {
+      // Skip disabled jobs
+      if (job.enabled === false) return;
+      
+      // Check if not scheduled (no nextRunAt or lastRunAt)
+      if (!job.nextRunAt && !job.lastRunAt) {
+        issueCount++;
+        return;
+      }
+      
+      // Check if missed (nextRunAt in the past)
+      if (job.nextRunAt) {
+        const nextRunDate = new Date(job.nextRunAt);
+        const now = new Date();
+        if (nextRunDate < now) {
+          issueCount++;
+          return;
+        }
+      }
+      
+      // Check explicit error status
+      if (job.status === "error") {
+        issueCount++;
+      }
+    });
+    return issueCount;
+  }, [cronJobs]);
 
   // Filter sessions for display
-  const activeSessions = subagents.filter(s => s.status === 'running' || s.status === 'queued');
+  // "Running" = actively processing (updated within 2 min)
+  // "Active" = recently used (updated within 30 min)
+  // "Idle" = not recently active (updated >30 min ago)
+  const runningSessions = subagents.filter(s => s.status === "running");
+  const activeSessions = subagents.filter(s => s.status === "active");
+  const idleSessions = subagents.filter(s => s.status === "idle");
 
   if (isLoading && subagents.length === 0) {
     return (
@@ -162,12 +191,18 @@ export default function TaskManagerOverview() {
       <div className="flex-1 p-3 md:p-6 overflow-auto">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <StatCard 
+              label="Running"
+              value={runningCount}
+              icon={PlayIcon}
+              color="green"
+            />
             <StatCard 
               label="Active"
               value={activeCount}
-              icon={PlayIcon}
-              color="green"
+              icon={ChartBarIcon}
+              color="blue"
             />
             <StatCard 
               label="Idle"
@@ -176,31 +211,44 @@ export default function TaskManagerOverview() {
               color="yellow"
             />
             <StatCard 
-              label="Total Sessions"
-              value={totalSessions}
-              icon={ChartBarIcon}
-              color="blue"
+              label="Cron Jobs"
+              sublabel={cronJobIssues > 0 ? `${cronJobIssues} issue${cronJobIssues !== 1 ? 's' : ''}` : 'All healthy'}
+              value={cronJobs.length}
+              icon={cronJobIssues > 0 ? ExclamationTriangleIcon : CalendarDaysIcon}
+              color={cronJobIssues > 0 ? "yellow" : "primary"}
             />
             <StatCard 
-              label="Tokens Used"
+              label="Recent Tokens"
+              sublabel="Last message per session"
               value={metrics.totalTokens.toLocaleString()}
               icon={CircleStackIcon}
               color="purple"
             />
             <StatCard 
-              label="Total Cost"
-              value={`$${metrics.totalCost.toFixed(2)}`}
+              label="Recent Cost"
+              sublabel="Last message per session"
+              value={`$${metrics.totalCost.toFixed(4)}`}
               icon={CurrencyDollarIcon}
               color="primary"
             />
           </div>
 
-          {/* Active Sessions */}
+          {/* Active Sessions (running + active, differentiated by label) */}
           <SessionList 
-            sessions={activeSessions}
+            sessions={[...runningSessions, ...activeSessions]}
             title="Active Sessions"
-            emptyMessage="No active or queued sessions"
+            emptyMessage="No active sessions"
           />
+
+          {/* Idle Sessions */}
+          <SessionList 
+            sessions={idleSessions}
+            title="Idle Sessions"
+            emptyMessage="No idle sessions"
+          />
+
+          {/* Cron Jobs */}
+          <CronJobList jobs={cronJobs} isLoading={cronJobsLoading} />
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ import {
   CpuChipIcon,
   RectangleGroupIcon,
   ChartPieIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { classNames } from '../utils/helpers';
 import { useAuthStore } from '../stores/authStore';
@@ -42,6 +43,7 @@ export default function Sidebar({ onCloseMobile }) {
     { name: 'Org Chart', href: '/tasks/org-chart', icon: ChartBarIcon },
     { name: 'Subagents', href: '/subagents', icon: CpuChipIcon },
     { name: 'Workspaces', href: `/workspaces/${getDefaultAgent()?.id || 'coo'}`, icon: FolderIcon },
+    { name: 'Docs', href: '/docs', icon: DocumentTextIcon },
     { name: 'Log', href: '/log', icon: ClipboardDocumentListIcon },
     { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, subpages: [
       { name: 'Users', href: '/settings/users', icon: UserIcon },
@@ -90,7 +92,9 @@ export default function Sidebar({ onCloseMobile }) {
               ? location.pathname.startsWith('/settings')
               : item.href === '/workspaces'
                 ? location.pathname.startsWith('/workspaces')
-                : location.pathname === item.href;
+                : item.href === '/docs'
+                  ? location.pathname.startsWith('/docs')
+                  : location.pathname === item.href;
             const isExpanded = expandedItems[item.name] || (item.subpages && item.subpages.some(sub => location.pathname === sub.href));
 
             return (

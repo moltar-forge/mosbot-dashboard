@@ -160,8 +160,6 @@ export default function Subagents() {
     );
   }
 
-  const hasData = data.running.length > 0 || data.queued.length > 0 || data.completed.length > 0;
-
   // Determine which data to show based on active filter
   const getFilteredData = () => {
     switch (activeFilter) {

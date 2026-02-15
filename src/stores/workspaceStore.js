@@ -8,11 +8,13 @@ export const useWorkspaceStore = create((set, get) => ({
   isLoadingListing: false,
   listingError: null,
   listingErrors: {}, // Errors keyed by `${agentId}:${path}:${recursive}` to prevent infinite retry loops
+  loadingListings: {}, // Track which listings are currently being fetched
   
   // File content state
   fileContents: {}, // Cache keyed by `${agentId}:${path}`
   isLoadingContent: false,
   contentError: null,
+  loadingContents: {}, // Track which files are currently being fetched
   
   // Current selection
   selectedFile: null,
@@ -38,12 +40,21 @@ export const useWorkspaceStore = create((set, get) => ({
       return state.listings[cacheKey];
     }
     
+    // Prevent concurrent fetches of the same listing
+    if (state.loadingListings[cacheKey]) {
+      return null;
+    }
+    
     set((state) => ({
       isLoadingListing: true,
       listingError: null,
       listingErrors: {
         ...state.listingErrors,
         [cacheKey]: null,
+      },
+      loadingListings: {
+        ...state.loadingListings,
+        [cacheKey]: true,
       },
     }));
     
@@ -65,18 +76,24 @@ export const useWorkspaceStore = create((set, get) => ({
         }))
       };
       
-      set((state) => ({
-        listings: {
-          ...state.listings,
-          [cacheKey]: normalizedData
-        },
-        isLoadingListing: false,
-        listingError: null,
-        listingErrors: {
-          ...state.listingErrors,
-          [cacheKey]: null,
-        },
-      }));
+      set((state) => {
+        const newLoadingListings = { ...state.loadingListings };
+        delete newLoadingListings[cacheKey];
+        
+        return {
+          listings: {
+            ...state.listings,
+            [cacheKey]: normalizedData
+          },
+          isLoadingListing: false,
+          listingError: null,
+          listingErrors: {
+            ...state.listingErrors,
+            [cacheKey]: null,
+          },
+          loadingListings: newLoadingListings,
+        };
+      });
       
       return normalizedData;
     } catch (error) {
@@ -84,14 +101,20 @@ export const useWorkspaceStore = create((set, get) => ({
         || error.message 
         || 'Failed to fetch workspace listing';
       
-      set((state) => ({ 
-        listingError: errorMessage,
-        listingErrors: {
-          ...state.listingErrors,
-          [cacheKey]: errorMessage,
-        },
-        isLoadingListing: false,
-      }));
+      set((state) => {
+        const newLoadingListings = { ...state.loadingListings };
+        delete newLoadingListings[cacheKey];
+        
+        return {
+          listingError: errorMessage,
+          listingErrors: {
+            ...state.listingErrors,
+            [cacheKey]: errorMessage,
+          },
+          isLoadingListing: false,
+          loadingListings: newLoadingListings,
+        };
+      });
       
       throw error;
     }
@@ -109,7 +132,19 @@ export const useWorkspaceStore = create((set, get) => ({
       return state.fileContents[cacheKey];
     }
     
-    set({ isLoadingContent: true, contentError: null });
+    // Prevent concurrent fetches of the same file
+    if (state.loadingContents[cacheKey]) {
+      return null;
+    }
+    
+    set((state) => ({
+      isLoadingContent: true,
+      contentError: null,
+      loadingContents: {
+        ...state.loadingContents,
+        [cacheKey]: true,
+      },
+    }));
     
     try {
       const response = await api.get('/openclaw/workspace/files/content', {
@@ -118,14 +153,20 @@ export const useWorkspaceStore = create((set, get) => ({
       
       const data = response.data.data;
       
-      set((state) => ({
-        fileContents: {
-          ...state.fileContents,
-          [cacheKey]: data
-        },
-        isLoadingContent: false,
-        contentError: null
-      }));
+      set((state) => {
+        const newLoadingContents = { ...state.loadingContents };
+        delete newLoadingContents[cacheKey];
+        
+        return {
+          fileContents: {
+            ...state.fileContents,
+            [cacheKey]: data
+          },
+          isLoadingContent: false,
+          contentError: null,
+          loadingContents: newLoadingContents,
+        };
+      });
       
       return data;
     } catch (error) {
@@ -133,9 +174,15 @@ export const useWorkspaceStore = create((set, get) => ({
         || error.message 
         || 'Failed to fetch file content';
       
-      set({ 
-        contentError: errorMessage, 
-        isLoadingContent: false 
+      set((state) => {
+        const newLoadingContents = { ...state.loadingContents };
+        delete newLoadingContents[cacheKey];
+        
+        return {
+          contentError: errorMessage,
+          isLoadingContent: false,
+          loadingContents: newLoadingContents,
+        };
       });
       
       throw error;

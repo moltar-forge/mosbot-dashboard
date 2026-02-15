@@ -74,10 +74,10 @@ export default function BotAvatar({ enableEyeTracking = false }) {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [enableEyeTracking]);
 
-  // Rotate quotes every 5 minutes when online and idle
+  // Rotate quotes every 5 minutes when online and idle or active (not working/running)
   useEffect(() => {
-    // Only rotate when online and idle
-    if (activityStatus !== 'Idle' || !isConnected) return;
+    // Only rotate when idle or active (not working or offline)
+    if ((activityStatus !== 'Idle' && activityStatus !== 'Active') || !isConnected) return;
 
     const interval = setInterval(() => {
       setCurrentQuoteIndex((prev) => {
@@ -93,18 +93,25 @@ export default function BotAvatar({ enableEyeTracking = false }) {
     return () => clearInterval(interval);
   }, [activityStatus, isConnected]);
 
+  const { sessionCounts } = useBotStore();
+  
   // Get current message based on status
   const getStatusMessage = () => {
     if (activityStatus === 'Offline') {
       return 'OFFLINE - RECONNECTING...';
     }
     if (activityStatus === 'Working') {
+      if (sessionCounts.running > 0) {
+        return `${sessionCounts.running} AGENT${sessionCounts.running > 1 ? 'S' : ''} RUNNING...`;
+      }
       return inflightRequests > 0 
         ? `WORKING ON ${inflightRequests} TASK${inflightRequests > 1 ? 'S' : ''}...`
         : 'WORKING...';
     }
-    // Idle - show rotating motivational quote
-    return MOTIVATIONAL_QUOTES[currentQuoteIndex].toUpperCase();
+    if (activityStatus === 'Active' || activityStatus === 'Idle') {
+      // Online/Active: show rotating motivational quote
+      return MOTIVATIONAL_QUOTES[currentQuoteIndex].toUpperCase();
+    }
   };
 
   return (
@@ -321,7 +328,7 @@ export default function BotAvatar({ enableEyeTracking = false }) {
                 "w-20 h-20",
                 activityStatus === 'Offline' ? 'avatar-sleeping' :
                 activityStatus === 'Working' ? 'avatar-working' :
-                'avatar-idle'
+                'avatar-idle' // Active and Idle both use the idle float animation
               )}
               fill="none"
             >
@@ -486,7 +493,7 @@ export default function BotAvatar({ enableEyeTracking = false }) {
                 cx="50" 
                 cy="18" 
                 r="3" 
-                fill={activityStatus === 'Offline' ? '#ef4444' : activityStatus === 'Working' ? '#eab308' : '#3b82f6'}
+                fill={activityStatus === 'Offline' ? '#ef4444' : activityStatus === 'Working' ? '#eab308' : '#22c55e'}
                 className={activityStatus === 'Working' ? 'antenna-glow-busy' : 'antenna-glow'}
               />
             </svg>
@@ -505,7 +512,7 @@ export default function BotAvatar({ enableEyeTracking = false }) {
         )}>
           <span className="transition-opacity duration-300">
             {activityStatus === 'Offline' ? 'Offline' :
-             inflightRequests > 0 ? `${inflightRequests} task${inflightRequests > 1 ? 's' : ''} active` : 'Online'}
+             activityStatus === 'Working' ? 'Running' : 'Online'}
           </span>
         </div>
       </div>

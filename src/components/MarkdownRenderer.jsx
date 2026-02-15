@@ -21,8 +21,9 @@ import { getWorkspaceFileUrl, isWorkspaceFilePath } from "../utils/helpers";
  * @param {string} className - Additional CSS classes for the wrapper
  * @param {boolean} breaks - Whether to convert soft line breaks to <br> (default: true).
  *   Set to false for structured markdown files where standard paragraph spacing is preferred.
+ * @param {string} workspaceBaseUrl - Optional base URL for workspace file links (default: '/workspaces'). Use '/docs' for docs pages.
  */
-const MarkdownRenderer = ({ content, size = "sm", className = "", breaks = true }) => {
+const MarkdownRenderer = ({ content, size = "sm", className = "", breaks = true, workspaceBaseUrl = '/workspaces' }) => {
   const isExtraSmall = size === "xs";
 
   // Base text size classes
@@ -130,7 +131,7 @@ const MarkdownRenderer = ({ content, size = "sm", className = "", breaks = true 
       if (isFileLink) {
         return (
           <Link
-            to={getWorkspaceFileUrl(content)}
+            to={getWorkspaceFileUrl(content, workspaceBaseUrl)}
             className={`${codeClass} hover:text-primary-300 underline cursor-pointer`}
           >
             {props.children}
@@ -179,7 +180,7 @@ const MarkdownRenderer = ({ content, size = "sm", className = "", breaks = true 
       const linkClass = "text-primary-400 hover:text-primary-300 underline";
       if (isWorkspaceLink) {
         return (
-          <Link to={getWorkspaceFileUrl(href)} className={linkClass}>
+          <Link to={getWorkspaceFileUrl(href, workspaceBaseUrl)} className={linkClass}>
             {children}
           </Link>
         );
@@ -223,7 +224,7 @@ const MarkdownRenderer = ({ content, size = "sm", className = "", breaks = true 
         {...props}
       />
     ),
-  }), [isExtraSmall, textSize]);
+  }), [isExtraSmall, textSize, workspaceBaseUrl]);
 
   // Memoize plugin arrays to keep stable references across renders
   const remarkPlugins = useMemo(
@@ -250,6 +251,7 @@ MarkdownRenderer.propTypes = {
   size: PropTypes.oneOf(["sm", "xs"]),
   className: PropTypes.string,
   breaks: PropTypes.bool,
+  workspaceBaseUrl: PropTypes.string,
 };
 
 export default MarkdownRenderer;

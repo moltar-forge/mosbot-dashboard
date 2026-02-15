@@ -8,7 +8,7 @@ import { useToastStore } from '../stores/toastStore';
 import { formatDateTimeLocal } from '../utils/helpers';
 import logger from '../utils/logger';
 
-export default function FilePreview({ file, onDelete, onPathIsDirectory }) {
+export default function FilePreview({ file, agentId = 'coo', onDelete, onPathIsDirectory, workspaceBaseUrl = '/workspaces' }) {
   const { 
     fileContents, 
     isLoadingContent, 
@@ -26,7 +26,9 @@ export default function FilePreview({ file, onDelete, onPathIsDirectory }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isAccessDenied, setIsAccessDenied] = useState(false);
   
-  const content = file ? fileContents[file.path] : null;
+  // Use the same cache key format as the store: `${agentId}:${path}`
+  const cacheKey = file ? `${agentId}:${file.path}` : null;
+  const content = cacheKey ? fileContents[cacheKey] : null;
   const isMarkdown = file?.name.endsWith('.md');
   const canModify = useMemo(() => isAdmin(), [isAdmin]);
   
@@ -47,7 +49,7 @@ export default function FilePreview({ file, onDelete, onPathIsDirectory }) {
   useEffect(() => {
     if (file && file.type === 'file' && !content) {
       setIsAccessDenied(false);
-      fetchFileContent({ path: file.path }).catch((error) => {
+      fetchFileContent({ path: file.path, agentId }).catch((error) => {
         // Check if this is a 403 Forbidden error (access denied)
         const is403Error = error.response?.status === 403;
         const errorMsg = error.response?.data?.error?.message || error.response?.data?.error || error.message || '';
@@ -77,7 +79,7 @@ export default function FilePreview({ file, onDelete, onPathIsDirectory }) {
         }
       });
     }
-  }, [file, content, fetchFileContent, showToast, user]);
+  }, [file, content, fetchFileContent, showToast, user, agentId]);
   
   // Reset access denied flag when file changes
   useEffect(() => {
@@ -395,7 +397,7 @@ export default function FilePreview({ file, onDelete, onPathIsDirectory }) {
             placeholder="File content..."
           />
         ) : isMarkdown ? (
-          <MarkdownRenderer content={content.content} size="sm" breaks={false} />
+          <MarkdownRenderer content={content.content} size="sm" breaks={false} workspaceBaseUrl={workspaceBaseUrl} />
         ) : (
           <pre className="bg-dark-950 p-4 rounded-lg border border-dark-800 overflow-x-auto">
             <code className="text-sm text-dark-200 font-mono">
@@ -415,6 +417,8 @@ FilePreview.propTypes = {
     path: PropTypes.string.isRequired,
     type: PropTypes.oneOf(['file', 'directory']).isRequired,
   }),
+  agentId: PropTypes.string,
   onDelete: PropTypes.func,
   onPathIsDirectory: PropTypes.func,
+  workspaceBaseUrl: PropTypes.string,
 };

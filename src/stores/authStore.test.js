@@ -147,6 +147,14 @@ describe('authStore', () => {
       expect(useAuthStore.getState().isAdmin()).toBe(true);
     });
 
+    it('returns true for agent user', () => {
+      useAuthStore.setState({
+        user: { id: 1, email: 'agent@example.com', role: 'agent' },
+      });
+
+      expect(useAuthStore.getState().isAdmin()).toBe(true);
+    });
+
     it('returns true for owner user', () => {
       useAuthStore.setState({
         user: { id: 1, email: 'owner@example.com', role: 'owner' },

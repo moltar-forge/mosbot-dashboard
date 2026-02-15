@@ -242,7 +242,7 @@ describe('FilePreview', () => {
       render(<FilePreview file={mockFile} />);
 
       await waitFor(() => {
-        expect(mockFetchFileContent).toHaveBeenCalledWith({ path: '/test.md' });
+        expect(mockFetchFileContent).toHaveBeenCalledWith(expect.objectContaining({ path: '/test.md' }));
       });
 
       // Wait a bit for the error handling to complete
@@ -283,7 +283,7 @@ describe('FilePreview', () => {
       render(<FilePreview file={mockFile} />);
 
       await waitFor(() => {
-        expect(mockFetchFileContent).toHaveBeenCalledWith({ path: '/restricted.md' });
+        expect(mockFetchFileContent).toHaveBeenCalledWith(expect.objectContaining({ path: '/restricted.md' }));
       });
 
       // Wait a bit to ensure toast is not called
@@ -305,9 +305,10 @@ describe('FilePreview', () => {
         type: 'file',
       };
 
+      // FilePreview uses cache key `${agentId}:${path}` (default agentId is 'coo')
       useWorkspaceStore.mockReturnValue({
         fileContents: {
-          '/test.md': {
+          'coo:/test.md': {
             content: '# Test Content',
             size: 1024,
             modified: '2024-01-01T00:00:00Z',

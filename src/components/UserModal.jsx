@@ -212,7 +212,8 @@ export default function UserModal({ isOpen, onClose, user = null, onSave }) {
                       disabled={isSubmitting || (user && user.role === 'owner')}
                     >
                       <option value="user">User</option>
-                      <option value="admin">Admin</option>
+                      <option value="agent">Agent</option>
+                      <option value="admin">Admin (deprecated)</option>
                       {user && user.role === 'owner' && <option value="owner">Owner</option>}
                     </select>
                     {user && user.role === 'owner' && (

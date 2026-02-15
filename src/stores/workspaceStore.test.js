@@ -49,7 +49,7 @@ describe('workspaceStore', () => {
         params: { path: '/', recursive: 'false' }
       });
       expect(result).toEqual(mockListing);
-      expect(useWorkspaceStore.getState().listings['/:false']).toEqual(mockListing);
+      expect(useWorkspaceStore.getState().listings["coo:/:false"]).toEqual(mockListing);
       expect(useWorkspaceStore.getState().isLoadingListing).toBe(false);
       expect(useWorkspaceStore.getState().listingError).toBe(null);
     });
@@ -77,7 +77,7 @@ describe('workspaceStore', () => {
         params: { path: '/', recursive: 'true' }
       });
       expect(result).toEqual(mockListing);
-      expect(useWorkspaceStore.getState().listings['/:true']).toEqual(mockListing);
+      expect(useWorkspaceStore.getState().listings["coo:/:true"]).toEqual(mockListing);
     });
 
     it('uses cached listing when available and not forced', async () => {
@@ -86,10 +86,10 @@ describe('workspaceStore', () => {
         count: 1,
       };
 
-      // Set cached data
+      // Set cached data (cache key: agentId:path:recursive)
       useWorkspaceStore.setState({
         listings: {
-          '/:false': mockListing,
+          "coo:/:false": mockListing,
         },
       });
 
@@ -108,10 +108,10 @@ describe('workspaceStore', () => {
         files: [{ path: '/new.md', name: 'new.md', type: 'file', size: 512 }],
       };
 
-      // Set cached data
+      // Set cached data (cache key: agentId:path:recursive)
       useWorkspaceStore.setState({
         listings: {
-          '/:false': cachedListing,
+          "coo:/:false": cachedListing,
         },
       });
 
@@ -129,7 +129,7 @@ describe('workspaceStore', () => {
 
       expect(api.get).toHaveBeenCalled();
       expect(result).toEqual(newListing);
-      expect(useWorkspaceStore.getState().listings['/:false']).toEqual(newListing);
+      expect(useWorkspaceStore.getState().listings["coo:/:false"]).toEqual(newListing);
     });
 
     it('sets loading state during fetch', async () => {
@@ -192,7 +192,7 @@ describe('workspaceStore', () => {
         params: { path: '/README.md' }
       });
       expect(result).toEqual(mockContent);
-      expect(useWorkspaceStore.getState().fileContents['/README.md']).toEqual(mockContent);
+      expect(useWorkspaceStore.getState().fileContents["coo:/README.md"]).toEqual(mockContent);
       expect(useWorkspaceStore.getState().isLoadingContent).toBe(false);
       expect(useWorkspaceStore.getState().contentError).toBe(null);
     });
@@ -203,10 +203,10 @@ describe('workspaceStore', () => {
         content: 'Cached content',
       };
 
-      // Set cached data
+      // Set cached data (cache key: agentId:path)
       useWorkspaceStore.setState({
         fileContents: {
-          '/test.md': mockContent,
+          "coo:/test.md": mockContent,
         },
       });
 
@@ -225,10 +225,10 @@ describe('workspaceStore', () => {
         content: 'New content',
       };
 
-      // Set cached data
+      // Set cached data (cache key: agentId:path)
       useWorkspaceStore.setState({
         fileContents: {
-          '/test.md': cachedContent,
+          "coo:/test.md": cachedContent,
         },
       });
 
@@ -245,7 +245,7 @@ describe('workspaceStore', () => {
 
       expect(api.get).toHaveBeenCalled();
       expect(result).toEqual(newContent);
-      expect(useWorkspaceStore.getState().fileContents['/test.md']).toEqual(newContent);
+      expect(useWorkspaceStore.getState().fileContents["coo:/test.md"]).toEqual(newContent);
     });
 
     it('sets loading state during fetch', async () => {
@@ -312,27 +312,27 @@ describe('workspaceStore', () => {
   });
 
   describe('cache management', () => {
-    it('clears specific listing cache', () => {
+    it("clears specific listing cache", () => {
       useWorkspaceStore.setState({
         listings: {
-          '/:false': { files: [] },
-          '/:true': { files: [] },
-          '/src:false': { files: [] },
+          "coo:/:false": { files: [] },
+          "coo:/:true": { files: [] },
+          "coo:/src:false": { files: [] },
         },
       });
 
-      useWorkspaceStore.getState().clearListingCache('/', false);
+      useWorkspaceStore.getState().clearListingCache("/", false);
 
-      expect(useWorkspaceStore.getState().listings['/:false']).toBeUndefined();
-      expect(useWorkspaceStore.getState().listings['/:true']).toBeDefined();
-      expect(useWorkspaceStore.getState().listings['/src:false']).toBeDefined();
+      expect(useWorkspaceStore.getState().listings["coo:/:false"]).toBeUndefined();
+      expect(useWorkspaceStore.getState().listings["coo:/:true"]).toBeDefined();
+      expect(useWorkspaceStore.getState().listings["coo:/src:false"]).toBeDefined();
     });
 
-    it('clears all listing cache', () => {
+    it("clears all listing cache", () => {
       useWorkspaceStore.setState({
         listings: {
-          '/:false': { files: [] },
-          '/:true': { files: [] },
+          "coo:/:false": { files: [] },
+          "coo:/:true": { files: [] },
         },
       });
 
@@ -341,18 +341,18 @@ describe('workspaceStore', () => {
       expect(useWorkspaceStore.getState().listings).toEqual({});
     });
 
-    it('clears specific file content cache', () => {
+    it("clears specific file content cache", () => {
       useWorkspaceStore.setState({
         fileContents: {
-          '/test1.md': { content: 'test1' },
-          '/test2.md': { content: 'test2' },
+          "coo:/test1.md": { content: "test1" },
+          "coo:/test2.md": { content: "test2" },
         },
       });
 
-      useWorkspaceStore.getState().clearContentCache('/test1.md');
+      useWorkspaceStore.getState().clearContentCache("/test1.md");
 
-      expect(useWorkspaceStore.getState().fileContents['/test1.md']).toBeUndefined();
-      expect(useWorkspaceStore.getState().fileContents['/test2.md']).toBeDefined();
+      expect(useWorkspaceStore.getState().fileContents["coo:/test1.md"]).toBeUndefined();
+      expect(useWorkspaceStore.getState().fileContents["coo:/test2.md"]).toBeDefined();
     });
 
     it('clears all content cache', () => {

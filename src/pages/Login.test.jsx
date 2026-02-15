@@ -39,7 +39,7 @@ describe('Login', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText('Welcome to MosBot')).toBeInTheDocument();
+    expect(screen.getByText('Welcome to MosBot OS')).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();

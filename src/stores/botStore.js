@@ -46,6 +46,9 @@ export const useBotStore = create((set, get) => ({
   healthCheckInterval: null, // Interval ID for health checks
   connectionStableTimer: null, // Timer to stabilize connection state changes
   
+  // OpenClaw session status (fed from TaskManagerOverview polling)
+  sessionCounts: { running: 0, active: 0, idle: 0, total: 0 },
+  
   // Mood state (activity-driven only)
   currentMood: MOODS.CALM,
   moodTimers: {}, // Track timers for auto-mood changes
@@ -144,6 +147,10 @@ export const useBotStore = create((set, get) => ({
   // Call setConnected(true/false) when openclaw bot connects/disconnects
   setConnected: (connected) => set({ isConnected: connected }),
   
+  // Update session counts from OpenClaw Gateway data
+  // Called by TaskManagerOverview when session data is fetched
+  setSessionCounts: (counts) => set({ sessionCounts: counts }),
+  
   // Check OpenClaw workspace service health
   checkOpenClawHealth: async () => {
     try {
@@ -234,11 +241,26 @@ export const useBotStore = create((set, get) => ({
   getActivityStatus: () => {
     const state = get();
     if (!state.isConnected) return 'Offline';
-    return state.inflightRequests > 0 ? 'Working' : 'Idle';
+    // If OpenClaw agents are actively running (updated within 2 min), show Working
+    if (state.sessionCounts.running > 0) return 'Working';
+    // If dashboard has in-flight requests, show Working
+    if (state.inflightRequests > 0) return 'Working';
+    // If agents have recent activity (within 30 min), show Active
+    if (state.sessionCounts.active > 0) return 'Active';
+    return 'Idle';
   },
   getActivityLabel: () => {
     const state = get();
     if (!state.isConnected) return 'Offline - Reconnecting...';
-    return state.inflightRequests > 0 ? 'Working on tasks...' : 'Ready for tasks';
+    if (state.sessionCounts.running > 0) {
+      const count = state.sessionCounts.running;
+      return `${count} agent${count > 1 ? 's' : ''} running`;
+    }
+    if (state.inflightRequests > 0) return 'Working on tasks...';
+    if (state.sessionCounts.active > 0) {
+      const count = state.sessionCounts.active;
+      return `${count} agent${count > 1 ? 's' : ''} active`;
+    }
+    return 'Ready for tasks';
   },
 }));

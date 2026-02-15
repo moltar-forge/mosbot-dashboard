@@ -102,6 +102,13 @@ export const stripMarkdown = (text) => {
   // Remove horizontal rules (---)
   stripped = stripped.replace(/^---+$/gm, '');
   
+  // Convert markdown tables to plain text: | A | B | -> A B (skip separator rows)
+  stripped = stripped.replace(/^\|.+\|$/gm, (match) => {
+    const cells = match.split('|').map((c) => c.trim()).filter(Boolean);
+    if (cells.every((c) => /^-+$/.test(c))) return '';
+    return cells.join(' ');
+  });
+  
   // Clean up extra whitespace
   stripped = stripped.replace(/\n{3,}/g, '\n\n');
   stripped = stripped.trim();
@@ -122,16 +129,18 @@ export const classNames = (...classes) => {
  * Use with React Router's Link or for copying to clipboard.
  *
  * @param {string} filePath - Full workspace path, e.g. "/tasks/012-subagents-page/PRD.md"
- * @returns {string} - Route path like "/workspaces/tasks/012-subagents-page/PRD.md"
+ * @param {string} baseUrl - Optional base URL (default: '/workspaces'). Use '/docs' for docs pages.
+ * @returns {string} - Route path like "/workspaces/tasks/012-subagents-page/PRD.md" or "/docs/README.md"
  *
  * @example
  * <Link to={getWorkspaceFileUrl('/tasks/012-subagents-page/PRD.md')}>View PRD</Link>
+ * <Link to={getWorkspaceFileUrl('/README.md', '/docs')}>View Docs</Link>
  */
-export const getWorkspaceFileUrl = (filePath) => {
-  if (!filePath || typeof filePath !== 'string') return '/workspaces';
+export const getWorkspaceFileUrl = (filePath, baseUrl = '/workspaces') => {
+  if (!filePath || typeof filePath !== 'string') return baseUrl;
   const normalized = filePath.trim().replace(/\/+/g, '/');
   const withSlash = normalized.startsWith('/') ? normalized : `/${normalized}`;
-  return `/workspaces${withSlash}`;
+  return `${baseUrl}${withSlash}`;
 };
 
 /**

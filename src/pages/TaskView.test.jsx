@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import TaskView from './TaskView';
-import { useTaskStore } from '../stores/taskStore';
 import logger from '../utils/logger';
 
 // Mock react-router-dom

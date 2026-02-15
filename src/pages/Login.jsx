@@ -48,7 +48,7 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-600 to-purple-600 rounded-lg mb-4">
             <span className="text-white font-bold text-2xl">M</span>
           </div>
-          <h1 className="text-2xl font-bold text-dark-100">Welcome to MosBot</h1>
+          <h1 className="text-2xl font-bold text-dark-100">Welcome to MosBot OS</h1>
           <p className="text-dark-400 mt-2">Sign in to your account to continue</p>
         </div>
 
@@ -74,7 +74,7 @@ export default function Login() {
                 value={formData.email}
                 onChange={handleChange}
                 className="input-field"
-                placeholder="owner@mosbot.local"
+                placeholder="ceo@mosbot.local"
                 required
                 autoComplete="email"
                 disabled={isLoading}
@@ -121,7 +121,7 @@ export default function Login() {
           {import.meta.env.DEV && (
             <div className="mt-6 p-3 bg-dark-800 border border-dark-700 rounded-lg">
               <p className="text-xs text-dark-400 text-center">
-                Default credentials: owner@mosbot.local / admin123
+                Default credentials: ceo@mosbot.local / admin123
               </p>
             </div>
           )}

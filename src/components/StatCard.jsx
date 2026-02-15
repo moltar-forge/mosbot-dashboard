@@ -1,4 +1,4 @@
-export default function StatCard({ label, value, icon: Icon, color = 'primary' }) {
+export default function StatCard({ label, sublabel, value, icon: Icon, color = 'primary' }) {
   const colorClasses = {
     primary: 'bg-primary-600/10 text-primary-500',
     green: 'bg-green-600/10 text-green-500',
@@ -11,7 +11,10 @@ export default function StatCard({ label, value, icon: Icon, color = 'primary' }
     <div className="bg-dark-800 border border-dark-700 rounded-lg p-6 shadow-card">
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-sm text-dark-500 mb-1">{label}</p>
+          <p className="text-sm text-dark-400 mb-1 font-medium">{label}</p>
+          {sublabel && (
+            <p className="text-xs text-dark-500 mb-2">{sublabel}</p>
+          )}
           <p className="text-2xl font-bold text-dark-100">{value}</p>
         </div>
         {Icon && (

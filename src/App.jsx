@@ -5,11 +5,11 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import ToastContainer from './components/ToastContainer';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
 import TaskManagerOverview from './pages/TaskManagerOverview';
 import KanbanPage from './pages/KanbanPage';
 import OrgChart from './pages/OrgChart';
 import Workspace from './pages/Workspace';
+import Docs from './pages/Docs';
 import Subagents from './pages/Subagents';
 import Log from './pages/Log';
 import Archived from './pages/Archived';
@@ -52,7 +52,7 @@ function App() {
             <Route path="/tasks/overview" element={<Layout><TaskManagerOverview /></Layout>} />
             <Route path="/tasks/kanban" element={<Layout><KanbanPage /></Layout>} />
             <Route path="/tasks/org-chart" element={<Layout><OrgChart /></Layout>} />
-            <Route path="/docs" element={<Navigate to={`/workspaces/${getDefaultAgent()?.id || 'coo'}`} replace />} />
+            <Route path="/docs/*" element={<Layout><Docs /></Layout>} />
             <Route path="/workspaces" element={<Navigate to={`/workspaces/${getDefaultAgent()?.id || 'coo'}`} replace />} />
             <Route path="/workspaces/:agentId/*" element={<Layout><Workspace /></Layout>} />
             <Route path="/subagents" element={<Layout><Subagents /></Layout>} />
