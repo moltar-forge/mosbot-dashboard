@@ -52,7 +52,7 @@ export default function Settings() {
     setIsLoading(true);
     setError('');
     try {
-      const response = await api.get('/admin/users');
+      const response = await api.get('/admin/users?includeAgentConfig=true');
       setUsers(response.data.data || []);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to load users');
@@ -102,13 +102,34 @@ export default function Settings() {
   };
 
   const handleSaveUser = async (userData, userId) => {
+    // Extract agent-specific fields
+    const { agentId, agentConfigPatch, ...userBasics } = userData;
+    
     if (userId) {
       // Update existing user
-      await api.put(`/admin/users/${userId}`, userData);
+      await api.put(`/admin/users/${userId}`, userBasics);
+      
+      // If user is an agent, update agent config
+      if (userBasics.role === 'agent' && agentId) {
+        await api.put(`/admin/users/${userId}/agent`, {
+          agentId,
+          agentConfigPatch
+        });
+      }
     } else {
       // Create new user
-      await api.post('/admin/users', userData);
+      const createResponse = await api.post('/admin/users', userBasics);
+      const newUserId = createResponse.data.data.id;
+      
+      // If new user is an agent, configure agent settings
+      if (userBasics.role === 'agent' && agentId) {
+        await api.put(`/admin/users/${newUserId}/agent`, {
+          agentId,
+          agentConfigPatch
+        });
+      }
     }
+    
     await fetchUsers();
     setIsModalOpen(false);
   };
