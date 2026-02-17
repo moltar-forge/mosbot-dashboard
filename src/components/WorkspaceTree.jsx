@@ -6,7 +6,8 @@ import {
   FolderOpenIcon,
   ArrowUpIcon,
   DocumentTextIcon,
-  DocumentIcon
+  DocumentIcon,
+  ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
 import { classNames } from '../utils/helpers';
 
@@ -29,6 +30,7 @@ function TreeNode({ node, depth = 0, selectedPath, onSelect, onFetchChildren, ch
   const isSelected = selectedPath === node.path;
   const isMarkdown = node.name.endsWith('.md');
   const isLoading = loadingPaths.has(node.path);
+  const isSymlink = node.isSymlink === true;
   
   // Get children from cache if folder is expanded
   const children = useMemo(() => {
@@ -136,20 +138,46 @@ function TreeNode({ node, depth = 0, selectedPath, onSelect, onFetchChildren, ch
         {!isDirectory && <div className="w-4" />}
         
         {/* File/folder icon */}
-        {isDirectory ? (
-          isExpanded ? (
-            <FolderOpenIcon className="w-4 h-4 flex-shrink-0 text-yellow-500" />
+        <div className="relative flex-shrink-0">
+          {isDirectory ? (
+            isExpanded ? (
+              <FolderOpenIcon className={classNames(
+                'w-4 h-4',
+                isSymlink ? 'text-cyan-400' : 'text-yellow-500'
+              )} />
+            ) : (
+              <FolderIcon className={classNames(
+                'w-4 h-4',
+                isSymlink ? 'text-cyan-400' : 'text-yellow-500'
+              )} />
+            )
+          ) : isMarkdown ? (
+            <DocumentTextIcon className={classNames(
+              'w-4 h-4',
+              isSymlink ? 'text-cyan-400' : 'text-blue-400'
+            )} />
           ) : (
-            <FolderIcon className="w-4 h-4 flex-shrink-0 text-yellow-500" />
-          )
-        ) : isMarkdown ? (
-          <DocumentTextIcon className="w-4 h-4 flex-shrink-0 text-blue-400" />
-        ) : (
-          <DocumentIcon className="w-4 h-4 flex-shrink-0 text-dark-400" />
-        )}
+            <DocumentIcon className={classNames(
+              'w-4 h-4',
+              isSymlink ? 'text-cyan-400' : 'text-dark-400'
+            )} />
+          )}
+          {/* Symlink indicator badge */}
+          {isSymlink && (
+            <ArrowTopRightOnSquareIcon 
+              className="w-2 h-2 absolute -bottom-0.5 -right-0.5 text-cyan-400 bg-dark-900 rounded-sm" 
+              title={node.symlinkTarget ? `Symlink → ${node.symlinkTarget}` : 'Symlink'}
+            />
+          )}
+        </div>
         
         {/* Name */}
-        <span className="text-sm truncate">{node.name}</span>
+        <span className={classNames(
+          'text-sm truncate',
+          isSymlink && 'italic'
+        )}>
+          {node.name}
+        </span>
         
         {/* Loading spinner */}
         {isLoading && (
