@@ -103,7 +103,7 @@ export default function SessionRow({ session, onClick, statusDisplay }) {
               <p className="text-base font-semibold text-dark-100 truncate">
                 {session.label || session.id}
               </p>
-              {session.kind && (
+              {(session.kind === 'heartbeat' || session.kind === 'cron') && (
                 <span
                   className={`px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded border flex-shrink-0 ${
                     session.kind === 'heartbeat'

@@ -3,7 +3,7 @@ import { PlusIcon, MagnifyingGlassIcon, ArrowPathIcon, Bars3Icon } from '@heroic
 import { useTaskStore } from '../stores/taskStore';
 import { useMobileNav } from './MobileNavContext';
 
-export default function Header({ title, subtitle, onCreateTask, onRefresh, searchValue, onSearchChange }) {
+export default function Header({ title, subtitle, onCreateTask, onRefresh, searchValue, onSearchChange, children }) {
   const onOpenNav = useMobileNav();
   const { isRefreshing, lastFetchedAt } = useTaskStore();
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
@@ -78,6 +78,9 @@ export default function Header({ title, subtitle, onCreateTask, onRefresh, searc
         )}
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Custom Children (e.g., Edit button) */}
+          {children}
+          
           {/* Refresh Button */}
           {onRefresh && (
             <button

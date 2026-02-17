@@ -59,7 +59,13 @@ export default function TaskManagerOverview() {
     return recentJobs.map(job => {
       // For heartbeat jobs, pull from the agent's main session (correct approach)
       // For cron jobs, prefer lastExecution data (actual cron run), fallback to agent session
-      const isHeartbeat = job.source === 'config';
+      // Match CronJobList: source: 'config' OR payload.kind OR jobId/id prefix OR name
+      const jobIdentifier = job.jobId || job.id || '';
+      const isHeartbeat =
+        job.source === 'config' ||
+        job.payload?.kind === 'heartbeat' ||
+        String(jobIdentifier).startsWith('heartbeat-') ||
+        /heartbeat/i.test(job.name || '');
       const agentSession = job.agentId ? agentSessionMap.get(job.agentId) : null;
       const executionData = job.lastExecution || {};
 
@@ -82,12 +88,16 @@ export default function TaskManagerOverview() {
       // show a fallback message instead of zeros
       const executionUnavailable = !isHeartbeat && executionData.unavailable;
 
+      // For heartbeat jobs, sessionKey may be missing from lastExecution; use agent's main session key
+      // since heartbeat runs in the agent's main session (e.g. agent:cmo:main)
+      const sessionKey = executionData.sessionKey || (isHeartbeat && agentSession?.key) || null;
+
       return {
         id: `activity-${job.jobId || job.id || job.name}`,
-        key: executionData.sessionKey || null,
+        key: sessionKey,
         label: job.name,
         status,
-        kind: job.source === 'config' ? 'heartbeat' : 'cron',
+        kind: isHeartbeat ? 'heartbeat' : 'cron',
         updatedAt: job.lastRunAt ? new Date(job.lastRunAt).getTime() : null,
         agent: job.agentId || null,
         // For cron: prefer lastExecution data, fallback to agent model
@@ -157,9 +167,11 @@ export default function TaskManagerOverview() {
   }, []);
 
   // Calculate session KPIs
+  // Match the section groupings: Running Sessions, Idle Sessions (active + idle)
   const runningCount = sessions.filter(s => s.status === 'running').length;
   const activeCount = sessions.filter(s => s.status === 'active').length;
   const idleCount = sessions.filter(s => s.status === 'idle').length;
+  const idleSessionsCount = activeCount + idleCount; // Matches "Idle Sessions" section
 
   // Filter sessions for display
   // "Running" = actively processing (updated within 2 min)
@@ -204,22 +216,23 @@ export default function TaskManagerOverview() {
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <StatCard 
-              label="Running"
+              label="Running Sessions"
               value={runningCount}
               icon={PlayIcon}
               color="green"
             />
             <StatCard 
-              label="Active"
-              value={activeCount}
-              icon={ChartBarIcon}
-              color="blue"
-            />
-            <StatCard 
-              label="Idle"
-              value={idleCount}
+              label="Idle Sessions"
+              sublabel={`${activeCount} active, ${idleCount} idle`}
+              value={idleSessionsCount}
               icon={ClockIcon}
               color="yellow"
+            />
+            <StatCard 
+              label="Total Sessions"
+              value={sessions.length}
+              icon={ChartBarIcon}
+              color="blue"
             />
             <StatCard 
               label="Recent Tokens"
@@ -237,12 +250,12 @@ export default function TaskManagerOverview() {
             />
           </div>
 
-          {/* Active Sessions — only shown when sessions are running */}
+          {/* Running Sessions — only shown when sessions are running */}
           {runningSessions.length > 0 && (
             <SessionList 
               sessions={runningSessions}
-              title="Active Sessions"
-              emptyMessage="No active sessions"
+              title="Running Sessions"
+              emptyMessage="No running sessions"
               onSessionClick={handleSessionClick}
             />
           )}

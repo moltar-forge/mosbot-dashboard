@@ -8,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import Header from "../components/Header";
 import MarkdownRenderer from "../components/MarkdownRenderer";
+import SessionDetailPanel from "../components/SessionDetailPanel";
 import { api, getCronJobs, createCronJob, updateCronJob, deleteCronJob, setCronJobEnabled, triggerCronJob, getInstanceConfig } from "../api/client";
 import { useToastStore } from '../stores/toastStore';
 import { useAgentStore } from '../stores/agentStore';
@@ -148,7 +149,7 @@ function getStatusBadge(status, enabled, nextRunAt, lastRunAt) {
   };
 }
 
-function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, agents }) {
+function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, onJobClick, agents }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const badge = getStatusBadge(job.status, job.enabled, job.nextRunAt, job.lastRunAt);
   const BadgeIcon = badge.icon;
@@ -175,8 +176,26 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, agents 
     <CalendarDaysIcon className="w-5 h-5 text-dark-400" />
   );
 
+  const handleCardClick = () => {
+    if (onJobClick) {
+      onJobClick(job);
+    }
+  };
+
   return (
-    <div className="group p-4 bg-dark-800 border border-dark-700 rounded-lg hover:border-dark-600 transition-colors">
+    <div 
+      className="group p-4 bg-dark-800 border border-dark-700 rounded-lg hover:border-dark-600 transition-colors cursor-pointer"
+      onClick={handleCardClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleCardClick();
+        }
+      }}
+      aria-label={`View run history for ${job.name}`}
+    >
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 mt-0.5">{IconElement}</div>
         
@@ -204,11 +223,17 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, agents 
                 {badge.label}
               </span>
               {/* Action buttons - visible on hover on desktop, always visible on mobile */}
-              <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 md:opacity-100 transition-opacity">
+              <div 
+                className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 md:opacity-100 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {/* Run Now button - only for enabled jobs */}
                 {job.enabled !== false && (
                   <button
-                    onClick={() => onTrigger(job)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTrigger(job);
+                    }}
                     className="p-1.5 text-dark-400 hover:text-green-400 hover:bg-dark-700 rounded transition-colors"
                     title="Run now"
                   >
@@ -218,7 +243,10 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, agents 
                 {/* Enable/Disable button - only for gateway jobs */}
                 {!isHeartbeat && (
                   <button
-                    onClick={() => onToggleEnabled(job)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleEnabled(job);
+                    }}
                     className="px-2.5 py-1 text-xs font-medium text-dark-300 hover:text-dark-100 bg-dark-700 hover:bg-dark-600 rounded transition-colors"
                     title={job.enabled ? 'Disable' : 'Enable'}
                   >
@@ -227,7 +255,10 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, agents 
                 )}
                 {/* Edit button - available for all jobs */}
                 <button
-                  onClick={() => onEdit(job)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(job);
+                  }}
                   className="p-1.5 text-dark-400 hover:text-primary-400 hover:bg-dark-700 rounded transition-colors"
                   title="Edit"
                 >
@@ -236,7 +267,10 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, agents 
                 {/* Delete button - only for gateway jobs */}
                 {!isHeartbeat && (
                   <button
-                    onClick={() => onDelete(job)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(job);
+                    }}
                     className="p-1.5 text-dark-400 hover:text-red-400 hover:bg-dark-700 rounded transition-colors"
                     title="Delete"
                   >
@@ -313,7 +347,10 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, agents 
                     {prompt}
                   </p>
                   <button
-                    onClick={() => setIsExpanded(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(true);
+                    }}
                     className="text-xs text-primary-400 hover:text-primary-300 font-medium whitespace-nowrap"
                   >
                     Show more
@@ -326,7 +363,10 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, agents 
                       Prompt
                     </p>
                     <button
-                      onClick={() => setIsExpanded(false)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsExpanded(false);
+                      }}
                       className="text-xs text-primary-400 hover:text-primary-300 font-medium"
                     >
                       Show less
@@ -1005,6 +1045,7 @@ export default function CronJobs() {
   const [editingJob, setEditingJob] = useState(null);
   const [deletingJob, setDeletingJob] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedJob, setSelectedJob] = useState(null);
   const [instanceTimezone, setInstanceTimezone] = useState('UTC');
   const showToast = useToastStore((state) => state.showToast);
 
@@ -1123,6 +1164,34 @@ export default function CronJobs() {
     );
   };
 
+  // Helper: convert job to session-shaped object for SessionDetailPanel
+  const toSessionShape = (job) => {
+    if (!job) return null;
+
+    const isHeartbeat = job.source === 'config' || job.payload?.kind === 'heartbeat';
+    
+    // For gateway cron: use lastExecution.sessionKey
+    // For heartbeat: use agent:${agentId}:main (main session)
+    const sessionKey = job.lastExecution?.sessionKey
+      ?? (isHeartbeat && job.agentId ? `agent:${job.agentId}:main` : null);
+
+    return {
+      key: sessionKey,
+      label: job.name,
+      agent: job.agentId,
+      status: job.status || (job.enabled !== false ? 'idle' : 'completed'),
+      kind: isHeartbeat ? 'heartbeat' : 'cron',
+      model: job.lastExecution?.model || job.payload?.model || job.agentModel || null,
+      inputTokens: job.lastExecution?.inputTokens || 0,
+      outputTokens: job.lastExecution?.outputTokens || 0,
+      messageCost: job.lastExecution?.messageCost || 0,
+      contextTokens: job.lastExecution?.contextTokens || 0,
+      totalTokensUsed: job.lastExecution?.totalTokensUsed || 0,
+      contextUsagePercent: job.lastExecution?.contextUsagePercent || 0,
+      updatedAt: job.lastRunAt ? new Date(job.lastRunAt).getTime() : null,
+    };
+  };
+
   return (
     <div className="flex flex-col h-full">
       <Header
@@ -1234,6 +1303,7 @@ export default function CronJobs() {
                         onDelete={setDeletingJob}
                         onToggleEnabled={handleToggleEnabled}
                         onTrigger={handleTrigger}
+                        onJobClick={setSelectedJob}
                       />
                     ))}
                   </div>
@@ -1263,6 +1333,7 @@ export default function CronJobs() {
                         onDelete={setDeletingJob}
                         onToggleEnabled={handleToggleEnabled}
                         onTrigger={handleTrigger}
+                        onJobClick={setSelectedJob}
                       />
                     ))}
                   </div>
@@ -1290,6 +1361,7 @@ export default function CronJobs() {
                     onDelete={setDeletingJob}
                     onToggleEnabled={handleToggleEnabled}
                     onTrigger={handleTrigger}
+                    onJobClick={setSelectedJob}
                   />
                 ))}
               </div>
@@ -1320,6 +1392,13 @@ export default function CronJobs() {
         onClose={() => setDeletingJob(null)}
         job={deletingJob}
         onConfirm={handleDelete}
+      />
+
+      {/* Session Detail Panel for viewing job run history */}
+      <SessionDetailPanel
+        isOpen={!!selectedJob}
+        onClose={() => setSelectedJob(null)}
+        session={selectedJob ? toSessionShape(selectedJob) : null}
       />
     </div>
   );

@@ -6,13 +6,17 @@ import {
   ClockIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
+  PencilIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import Header from '../components/Header';
 import { getActiveSubagentSessions, getOrgChartConfig } from '../api/client';
 import { agencyOrgChart, findNodeByLabel } from '../config/agencyOrgChart';
+import { useAuthStore } from '../stores/authStore';
+import AgentEditModal from '../components/AgentEditModal';
 import logger from '../utils/logger';
 
-const POLLING_INTERVAL = 10000; // 10 seconds
+const POLLING_INTERVAL = 30000; // 30 seconds (reduced from 10s to minimize load)
 
 export default function OrgChart() {
   const [subagents, setSubagents] = useState([]);
@@ -22,7 +26,11 @@ export default function OrgChart() {
   const [configError, setConfigError] = useState(null);
   const [, setSessionError] = useState(null);
   const [usingFallback, setUsingFallback] = useState(false);
+  const [showAgentModal, setShowAgentModal] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState(null);
+  const [agentModalMode, setAgentModalMode] = useState('edit'); // 'edit' or 'create'
   const pollingRef = useRef(null);
+  const { isAdmin } = useAuthStore();
 
   // Fetch org chart config
   const loadConfig = async () => {
@@ -61,38 +69,68 @@ export default function OrgChart() {
     loadSubagents();
   }, []);
 
-  // Polling
+  // Polling (only when tab is visible)
   useEffect(() => {
-    pollingRef.current = setInterval(() => {
-      loadSubagents();
-    }, POLLING_INTERVAL);
+    const startPolling = () => {
+      if (pollingRef.current) return; // Already polling
+      pollingRef.current = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          loadSubagents();
+        }
+      }, POLLING_INTERVAL);
+    };
 
-    return () => {
+    const stopPolling = () => {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
+        pollingRef.current = null;
       }
     };
-  }, []);
 
-  // Refresh when tab becomes visible
-  useEffect(() => {
+    // Start polling immediately
+    startPolling();
+
+    // Stop polling when tab is hidden, resume when visible
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        loadSubagents();
+        loadSubagents(); // Refresh immediately when tab becomes visible
+        startPolling();
+      } else {
+        stopPolling();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      stopPolling();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
+
+  // Note: visibility handling is now integrated into the polling effect above
 
   const handleRefresh = async () => {
     setIsLoadingConfig(true);
     setIsLoadingSessions(true);
     await Promise.all([loadConfig(), loadSubagents()]);
+  };
+  
+  const handleAgentModalSave = async () => {
+    // Reload config after agent modal saves
+    await loadConfig();
+  };
+  
+  const handleEditAgent = (agentId) => {
+    setSelectedAgentId(agentId);
+    setAgentModalMode('edit');
+    setShowAgentModal(true);
+  };
+  
+  const handleAddAgent = () => {
+    setSelectedAgentId(null);
+    setAgentModalMode('create');
+    setShowAgentModal(true);
   };
 
   // Check if a node is active based on running sessions
@@ -186,9 +224,10 @@ export default function OrgChart() {
     
     const borderColor = borderColors[leader.title] || 'border-primary-600/40';
     const bgColor = bgColors[leader.title] || 'from-primary-600/20 to-primary-800/20';
+    const canEdit = isAdmin();
     
     return (
-      <div className="relative w-[300px]">
+      <div className="relative w-[300px] group">
         <div className={`bg-gradient-to-br ${bgColor} border-2 ${borderColor} rounded-xl p-5 shadow-lg hover:shadow-xl transition-all h-full`}>
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex-1 min-w-0">
@@ -200,7 +239,18 @@ export default function OrgChart() {
               </div>
               <h3 className="text-lg font-bold text-dark-50 mb-1">{leader.displayName || leader.label}</h3>
             </div>
-            <StatusBadge status={status} />
+            <div className="flex items-center gap-2 ml-auto">
+              {canEdit && (
+                <button
+                  onClick={() => handleEditAgent(leader.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-[21px] px-1.5 bg-dark-800/70 hover:bg-dark-700 rounded border border-dark-600 hover:border-dark-500 flex items-center justify-center"
+                  title="Edit agent"
+                >
+                  <PencilIcon className="w-3 h-3 text-dark-300" />
+                </button>
+              )}
+              <StatusBadge status={status} />
+            </div>
           </div>
           <p className="text-xs text-dark-300 leading-relaxed mb-3">{leader.description}</p>
           {leader.model && (
@@ -362,6 +412,25 @@ export default function OrgChart() {
         title="Organization Chart" 
         subtitle="Multi-agent system hierarchy and status overview"
         onRefresh={handleRefresh}
+      >
+        {isAdmin() && (
+          <button
+            onClick={handleAddAgent}
+            className="btn-primary flex items-center gap-2"
+          >
+            <PlusIcon className="w-4 h-4" />
+            Add Agent
+          </button>
+        )}
+      </Header>
+      
+      {/* Agent Edit/Create Modal */}
+      <AgentEditModal
+        isOpen={showAgentModal}
+        onClose={() => setShowAgentModal(false)}
+        onSave={handleAgentModalSave}
+        agentId={selectedAgentId}
+        mode={agentModalMode}
       />
       
       <div className="flex-1 p-3 md:p-6 overflow-auto">

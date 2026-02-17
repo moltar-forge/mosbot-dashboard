@@ -49,11 +49,14 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Navigate to="/tasks/overview" replace />} />
-            <Route path="/tasks" element={<Navigate to="/tasks/overview" replace />} />
-            <Route path="/tasks/overview" element={<Layout><TaskManagerOverview /></Layout>} />
-            <Route path="/tasks/kanban" element={<Layout><KanbanPage /></Layout>} />
-            <Route path="/tasks/org-chart" element={<Layout><OrgChart /></Layout>} />
+            <Route path="/" element={<Navigate to="/task-manager" replace />} />
+            <Route path="/task-manager" element={<Layout><TaskManagerOverview /></Layout>} />
+            <Route path="/kanban" element={<Layout><KanbanPage /></Layout>} />
+            <Route path="/org-chart" element={<Layout><OrgChart /></Layout>} />
+            <Route path="/tasks" element={<Navigate to="/task-manager" replace />} />
+            <Route path="/tasks/overview" element={<Navigate to="/task-manager" replace />} />
+            <Route path="/tasks/kanban" element={<Navigate to="/kanban" replace />} />
+            <Route path="/tasks/org-chart" element={<Navigate to="/org-chart" replace />} />
             <Route path="/docs/*" element={<Layout><Docs /></Layout>} />
             <Route path="/workspaces" element={<Navigate to={`/workspaces/${getDefaultAgent()?.id || 'coo'}`} replace />} />
             <Route path="/workspaces/:agentId/*" element={<Layout><Workspace /></Layout>} />

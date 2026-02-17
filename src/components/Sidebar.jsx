@@ -40,9 +40,9 @@ export default function Sidebar({ onCloseMobile }) {
 
   // Dynamic navigation with agent-aware workspace link
   const navigation = [
-    { name: 'Task Manager', href: '/tasks/overview', icon: ChartPieIcon },
-    { name: 'Kanban', href: '/tasks/kanban', icon: RectangleGroupIcon },
-    { name: 'Org Chart', href: '/tasks/org-chart', icon: ChartBarIcon },
+    { name: 'Task Manager', href: '/task-manager', icon: ChartPieIcon },
+    { name: 'Kanban', href: '/kanban', icon: RectangleGroupIcon },
+    { name: 'Org Chart', href: '/org-chart', icon: ChartBarIcon },
     { name: 'Subagents', href: '/subagents', icon: CpuChipIcon },
     { name: 'Scheduler', href: '/scheduler', icon: CalendarDaysIcon },
     { name: 'Workspaces', href: `/workspaces/${getDefaultAgent()?.id || 'coo'}`, icon: FolderIcon },

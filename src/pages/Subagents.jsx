@@ -48,9 +48,26 @@ export default function Subagents() {
   useEffect(() => {
     fetchSubagents();
 
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchSubagents, 30000);
-    return () => clearInterval(interval);
+    // Refresh every 30 seconds (only when tab is visible)
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchSubagents();
+      }
+    }, 30000);
+
+    // Refresh when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchSubagents();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchSubagents]);
 
   const formatDuration = (seconds) => {

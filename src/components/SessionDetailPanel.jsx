@@ -243,7 +243,21 @@ export default function SessionDetailPanel({ isOpen, onClose, session }) {
                         </div>
                       )}
 
-                      {!isLoading && !error && messages.length === 0 && (
+                      {!isLoading && !error && !session?.key && (
+                        <div className="flex items-center justify-center py-12">
+                          <div className="text-center">
+                            <ChatBubbleLeftRightIcon className="mx-auto h-12 w-12 text-dark-600" />
+                            <p className="mt-3 text-sm text-dark-400">
+                              Session history is not available for this session
+                            </p>
+                            <p className="mt-1 text-xs text-dark-500">
+                              Cron or ephemeral sessions may not expose message history
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {!isLoading && !error && session?.key && messages.length === 0 && (
                         <div className="flex items-center justify-center py-12">
                           <div className="text-center">
                             <ChatBubbleLeftRightIcon className="mx-auto h-12 w-12 text-dark-600" />
