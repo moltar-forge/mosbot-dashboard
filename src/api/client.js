@@ -5,6 +5,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
 // Retry configuration
 const MAX_RETRIES = 3;
+// OpenClaw gateway proxy endpoints can be slow; use longer timeout than default (10s)
+const OPENCLAW_TIMEOUT = 30000;
 const RETRY_DELAY_BASE = 1000; // Base delay in milliseconds
 const RETRYABLE_STATUS_CODES = [408, 429, 500, 502, 503, 504]; // Status codes that should be retried
 
@@ -170,7 +172,7 @@ export const getActiveSubagentSessions = async () => {
 
 // OpenClaw Cron Jobs API - get configured scheduled jobs from OpenClaw
 export const getCronJobs = async () => {
-  const response = await api.get("/openclaw/cron-jobs");
+  const response = await api.get("/openclaw/cron-jobs", { timeout: OPENCLAW_TIMEOUT });
   return response.data.data;
 };
 
@@ -211,7 +213,7 @@ export const getTaskSubagents = async (taskId) => {
 
 // OpenClaw Sessions API - get active sessions from OpenClaw Gateway
 export const getOpenClawSessions = async () => {
-  const response = await api.get('/openclaw/sessions');
+  const response = await api.get('/openclaw/sessions', { timeout: OPENCLAW_TIMEOUT });
   return response.data.data;
 };
 

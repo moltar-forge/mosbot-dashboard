@@ -90,7 +90,13 @@ export default function TaskManagerOverview() {
 
       // For heartbeat jobs, sessionKey may be missing from lastExecution; use agent's main session key
       // since heartbeat runs in the agent's main session (e.g. agent:cmo:main)
-      const sessionKey = executionData.sessionKey || (isHeartbeat && agentSession?.key) || null;
+      // If agentSession is not found, construct the expected session key from agentId
+      let sessionKey = executionData.sessionKey || null;
+      if (!sessionKey && isHeartbeat && job.agentId) {
+        // Try to get from agent session first, otherwise construct expected key
+        // Special case: 'main' agent uses 'main' as session key, others use 'agent:{id}:main'
+        sessionKey = agentSession?.key || (job.agentId === 'main' ? 'main' : `agent:${job.agentId}:main`);
+      }
 
       return {
         id: `activity-${job.jobId || job.id || job.name}`,
