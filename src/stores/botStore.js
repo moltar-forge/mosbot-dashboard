@@ -57,6 +57,7 @@ export const useBotStore = create((set, get) => ({
   sessionsLoaded: false,
   sessionsError: null,
   sessionCounts: { running: 0, active: 0, idle: 0, total: 0 },
+  dailyCost: 0,
   sessionPollingInterval: null, // Interval ID for session polling
   
   // Mood state (activity-driven only)
@@ -164,13 +165,15 @@ export const useBotStore = create((set, get) => ({
   // This is the single source of truth for session data across the app
   fetchSessions: async () => {
     try {
-      const data = await getOpenClawSessions();
-      const sessions = data || [];
+      const result = await getOpenClawSessions();
+      const sessions = result?.sessions || result || [];
+      const dailyCost = result?.dailyCost || 0;
       
       set({
         sessions,
         sessionsLoaded: true,
         sessionsError: null,
+        dailyCost,
         sessionCounts: {
           running: sessions.filter(s => s.status === 'running').length,
           active: sessions.filter(s => s.status === 'active').length,

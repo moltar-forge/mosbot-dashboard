@@ -15,6 +15,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import logger from '../utils/logger';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 
 function formatDate(dateString) {
   if (!dateString) return '';
@@ -403,9 +404,7 @@ function StandupDetail({ standup, onBack }) {
                     </span>
                   </div>
                   <div className="p-3 bg-dark-800 border border-dark-700 rounded-lg">
-                    <div className="text-sm text-dark-300 whitespace-pre-wrap">
-                      {message.content}
-                    </div>
+                    <MarkdownRenderer content={message.content || ''} />
                   </div>
                 </div>
               </div>

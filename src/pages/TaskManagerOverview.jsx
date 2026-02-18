@@ -20,6 +20,7 @@ export default function TaskManagerOverview() {
   const sessionsLoaded = useBotStore((state) => state.sessionsLoaded);
   const sessionsError = useBotStore((state) => state.sessionsError);
   const fetchSessions = useBotStore((state) => state.fetchSessions);
+  const dailyCost = useBotStore((state) => state.dailyCost);
 
   const [selectedSession, setSelectedSession] = useState(null);
 
@@ -128,9 +129,18 @@ export default function TaskManagerOverview() {
         outputTokens: isHeartbeat
           ? (agentSession?.outputTokens || 0)
           : (executionUnavailable ? null : (executionData.outputTokens || 0)),
+        cacheReadTokens: isHeartbeat
+          ? (agentSession?.cacheReadTokens || 0)
+          : (executionUnavailable ? null : (executionData.cacheReadTokens || 0)),
+        cacheWriteTokens: isHeartbeat
+          ? (agentSession?.cacheWriteTokens || 0)
+          : (executionUnavailable ? null : (executionData.cacheWriteTokens || 0)),
         messageCost: isHeartbeat
           ? (agentSession?.messageCost || 0)
           : (executionUnavailable ? null : (executionData.messageCost || 0)),
+        todayTotalCost: isHeartbeat
+          ? null
+          : (executionUnavailable ? null : (executionData.todayTotalCost || null)),
         lastMessage: isHeartbeat
           ? (agentSession?.lastMessage || null)
           : (executionUnavailable 
@@ -149,18 +159,12 @@ export default function TaskManagerOverview() {
 
   // Calculate metrics from all displayed sessions (including recent activity)
   const metrics = useMemo(() => {
-    // Use sessions for metrics since they have the most accurate token/cost data
-    // Recent activity sessions may have incomplete data for heartbeats
     const totalTokens = sessions.reduce((sum, session) => {
       return sum + (session.inputTokens || 0) + (session.outputTokens || 0);
     }, 0);
 
-    const totalCost = sessions.reduce((sum, session) => {
-      return sum + (session.messageCost || 0);
-    }, 0);
-
-    return { totalTokens, totalCost };
-  }, [sessions]);
+    return { totalTokens, totalCost: dailyCost };
+  }, [sessions, dailyCost]);
 
   const handleRefresh = async () => {
     await Promise.all([fetchSessions(), loadRecentActivity()]);
@@ -267,14 +271,14 @@ export default function TaskManagerOverview() {
             />
             <StatCard 
               label="Recent Tokens"
-              sublabel="Last message per session"
+              sublabel="Current session context"
               value={metrics.totalTokens.toLocaleString()}
               icon={CircleStackIcon}
               color="purple"
             />
             <StatCard 
-              label="Recent Cost"
-              sublabel="Last message per session"
+              label="Today's Cost"
+              sublabel="All sessions"
               value={`$${metrics.totalCost.toFixed(4)}`}
               icon={CurrencyDollarIcon}
               color="primary"

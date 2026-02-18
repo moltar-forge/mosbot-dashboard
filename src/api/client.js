@@ -219,7 +219,10 @@ export const getTaskSubagents = async (taskId) => {
 // OpenClaw Sessions API - get active sessions from OpenClaw Gateway
 export const getOpenClawSessions = async () => {
   const response = await api.get('/openclaw/sessions', { timeout: OPENCLAW_TIMEOUT });
-  return response.data.data;
+  return {
+    sessions: response.data.data,
+    dailyCost: response.data.dailyCost || 0,
+  };
 };
 
 // Get full message history for a specific session

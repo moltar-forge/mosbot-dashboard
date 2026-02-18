@@ -103,15 +103,17 @@ export default function SessionRow({ session, onClick, statusDisplay }) {
               <p className="text-base font-semibold text-dark-100 truncate">
                 {session.label || session.id}
               </p>
-              {(session.kind === 'heartbeat' || session.kind === 'cron') && (
+              {(session.kind === 'heartbeat' || session.kind === 'cron' || session.kind === 'subagent') && (
                 <span
                   className={`px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded border flex-shrink-0 ${
                     session.kind === 'heartbeat'
                       ? 'text-pink-400 bg-pink-500/10 border-pink-500/20'
+                      : session.kind === 'subagent'
+                      ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20'
                       : 'text-purple-400 bg-purple-500/10 border-purple-500/20'
                   }`}
                 >
-                  {session.kind === 'heartbeat' ? 'HEARTBEAT' : 'CRON'}
+                  {session.kind === 'heartbeat' ? 'HEARTBEAT' : session.kind === 'subagent' ? 'SUBAGENT' : 'CRON'}
                 </span>
               )}
             </div>
@@ -150,26 +152,55 @@ export default function SessionRow({ session, onClick, statusDisplay }) {
         </div>
       </div>
 
-      {/* Middle row: token usage, cost, context window */}
-      {(session.inputTokens > 0 || session.outputTokens > 0 || session.messageCost > 0 || session.contextTokens > 0) && (
+      {/* Middle row: token usage, cache, cost, context window */}
+      {/* Cron jobs have per-run data ("Last"); all other sessions (main, group,
+          heartbeat, subagent) show session-level aggregates ("Session"). */}
+      {(session.inputTokens > 0 || session.outputTokens > 0 || session.cacheReadTokens > 0 || session.messageCost > 0 || session.contextTokens > 0) && (() => {
+        const isPerRun = session.kind === 'cron';
+        const inLabel = isPerRun ? 'Last In:' : 'Session In:';
+        const outLabel = isPerRun ? 'Last Out:' : 'Session Out:';
+        const costLabel = isPerRun ? 'Last Cost:' : 'Session Cost:';
+        return (
         <div className="flex items-center gap-3 mt-4 ml-8 flex-wrap text-xs">
           {/* Input / Output tokens */}
           {(session.inputTokens > 0 || session.outputTokens > 0) && (
             <div className="flex items-center gap-2">
-              <span className="text-dark-500">Last In:</span>
+              <span className="text-dark-500">{inLabel}</span>
               <span className="text-dark-200 font-mono font-medium">{formatTokens(session.inputTokens)}</span>
               <span className="text-dark-600">•</span>
-              <span className="text-dark-500">Last Out:</span>
+              <span className="text-dark-500">{outLabel}</span>
               <span className="text-dark-200 font-mono font-medium">{formatTokens(session.outputTokens)}</span>
             </div>
+          )}
+
+          {/* Cache read / write tokens */}
+          {(session.cacheReadTokens > 0 || session.cacheWriteTokens > 0) && (
+            <>
+              {(session.inputTokens > 0 || session.outputTokens > 0) && <span className="text-dark-600">•</span>}
+              <div className="flex items-center gap-2">
+                {session.cacheReadTokens > 0 && (
+                  <>
+                    <span className="text-dark-500">Cache Read:</span>
+                    <span className="text-emerald-400/80 font-mono font-medium">{formatTokens(session.cacheReadTokens)}</span>
+                  </>
+                )}
+                {session.cacheWriteTokens > 0 && (
+                  <>
+                    {session.cacheReadTokens > 0 && <span className="text-dark-600">•</span>}
+                    <span className="text-dark-500">Cache Write:</span>
+                    <span className="text-amber-400/80 font-mono font-medium">{formatTokens(session.cacheWriteTokens)}</span>
+                  </>
+                )}
+              </div>
+            </>
           )}
 
           {/* Cost */}
           {session.messageCost > 0 && (
             <>
-              {(session.inputTokens > 0 || session.outputTokens > 0) && <span className="text-dark-600">•</span>}
+              {(session.inputTokens > 0 || session.outputTokens > 0 || session.cacheReadTokens > 0) && <span className="text-dark-600">•</span>}
               <div className="flex items-center gap-1.5">
-                <span className="text-dark-500">Last Cost:</span>
+                <span className="text-dark-500">{costLabel}</span>
                 <span className="text-dark-200 font-mono font-medium">{formatCost(session.messageCost)}</span>
               </div>
             </>
@@ -178,7 +209,7 @@ export default function SessionRow({ session, onClick, statusDisplay }) {
           {/* Context window usage */}
           {session.contextTokens > 0 && (
             <>
-              {(session.inputTokens > 0 || session.outputTokens > 0 || session.messageCost > 0) && <span className="text-dark-600">•</span>}
+              {(session.inputTokens > 0 || session.outputTokens > 0 || session.cacheReadTokens > 0 || session.messageCost > 0) && <span className="text-dark-600">•</span>}
               <div className="flex items-center gap-2">
                 <span className="text-dark-500">Context:</span>
                 <div className="flex items-center gap-1.5">
@@ -199,7 +230,8 @@ export default function SessionRow({ session, onClick, statusDisplay }) {
             </>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* Bottom row: last message preview */}
       {session.lastMessage && (
