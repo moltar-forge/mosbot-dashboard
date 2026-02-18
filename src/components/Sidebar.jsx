@@ -60,7 +60,7 @@ export default function Sidebar({ onCloseMobile }) {
   const navigation = [
     { name: 'Task Manager', href: '/task-manager', icon: ChartPieIcon },
     { name: 'Kanban', href: '/kanban', icon: RectangleGroupIcon },
-    { name: 'Standup', href: '/standup', icon: MegaphoneIcon },
+    { name: 'Standups', href: '/standups', icon: MegaphoneIcon },
     { name: 'Org Chart', href: '/org-chart', icon: ChartBarIcon },
     { name: 'Subagents', href: '/subagents', icon: CpuChipIcon },
     { name: 'Scheduler', href: '/scheduler', icon: CalendarDaysIcon },

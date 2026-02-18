@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { Fragment, useEffect, useState, useCallback } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
 import { useStandupStore } from '../stores/standupStore';
 import { useToastStore } from '../stores/toastStore';
 import { useAgentStore } from '../stores/agentStore';
@@ -10,6 +11,8 @@ import {
   ExclamationCircleIcon,
   ArrowPathIcon,
   ChevronLeftIcon,
+  DocumentTextIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import logger from '../utils/logger';
 
@@ -150,10 +153,156 @@ function StandupCard({ standup, onClick, isActive }) {
   );
 }
 
+function EntrySection({ label, value, className = '' }) {
+  if (value == null || String(value).trim() === '') return null;
+  return (
+    <div className={className}>
+      <span className="text-xs font-semibold text-dark-500 uppercase tracking-wide block mb-1">
+        {label}
+      </span>
+      <p className="text-sm text-dark-300 whitespace-pre-wrap">{value}</p>
+    </div>
+  );
+}
+
+function EntryTasks({ tasks }) {
+  if (!tasks) return null;
+  let list = tasks;
+  if (typeof tasks === 'string') {
+    try {
+      list = JSON.parse(tasks);
+    } catch {
+      return null;
+    }
+  }
+  if (!Array.isArray(list) || list.length === 0) return null;
+  return (
+    <div className="mt-3">
+      <span className="text-xs font-semibold text-dark-500 uppercase tracking-wide block mb-1">
+        Tasks
+      </span>
+      <ul className="space-y-1">
+        {list.map((t, i) => (
+          <li key={i} className="text-sm text-dark-300 flex items-start gap-2">
+            {t.id && (
+              <span className="flex-shrink-0 font-mono text-dark-500">{t.id}</span>
+            )}
+            <span>{typeof t === 'object' ? (t.title || t.name || JSON.stringify(t)) : t}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function StandupNotesDrawer({ isOpen, onClose, standup }) {
+  const entries = (standup?.entries || []).slice().sort((a, b) => (a.turn_order ?? 0) - (b.turn_order ?? 0));
+  const hasStructuredEntry = (e) =>
+    (e.yesterday && e.yesterday.trim() !== '') ||
+    (e.today && e.today.trim() !== '') ||
+    (e.blockers && e.blockers.trim() !== '');
+
+  return (
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-200"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-150"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-dark-950/60" aria-hidden="true" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 overflow-hidden">
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+              <Transition.Child
+                as={Fragment}
+                enter="transform transition ease-in-out duration-300"
+                enterFrom="translate-x-full"
+                enterTo="translate-x-0"
+                leave="transform transition ease-in-out duration-200"
+                leaveFrom="translate-x-0"
+                leaveTo="translate-x-full"
+              >
+                <Dialog.Panel className="pointer-events-auto w-screen max-w-xl">
+                  <div className="flex h-full flex-col bg-dark-900 shadow-xl border-l border-dark-700">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-dark-700 bg-dark-800">
+                      <div className="flex items-center gap-2">
+                        <DocumentTextIcon className="w-5 h-5 text-primary-400" />
+                        <Dialog.Title className="text-lg font-semibold text-dark-100">
+                          Standup Notes
+                        </Dialog.Title>
+                      </div>
+                      <button
+                        type="button"
+                        className="p-2 rounded-md text-dark-400 hover:text-dark-200 hover:bg-dark-700 transition-colors"
+                        onClick={onClose}
+                      >
+                        <span className="sr-only">Close</span>
+                        <XMarkIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-6 py-4">
+                      {entries.length === 0 ? (
+                        <p className="text-dark-500 text-sm">No structured notes for this standup.</p>
+                      ) : (
+                        <div className="space-y-6">
+                          {entries.map((entry) => {
+                            const displayName = entry.user_name || entry.agent_id;
+                            const showStructured = hasStructuredEntry(entry);
+                            const fallbackContent = entry.raw;
+
+                            return (
+                              <section key={entry.id} className="border-b border-dark-700 pb-6 last:border-0 last:pb-0">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <AgentAvatar
+                                    agentId={entry.agent_id}
+                                    userName={displayName}
+                                    avatarUrl={entry.avatar_url || null}
+                                    size="sm"
+                                  />
+                                  <h3 className="text-base font-semibold text-dark-100">{displayName}</h3>
+                                </div>
+                                <div className="pl-8 text-dark-300">
+                                  {showStructured ? (
+                                    <>
+                                      <EntrySection label="Yesterday" value={entry.yesterday} className="mb-3" />
+                                      <EntrySection label="Today" value={entry.today} className="mb-3" />
+                                      <EntrySection label="Blockers" value={entry.blockers} className="mb-3" />
+                                      <EntryTasks tasks={entry.tasks} />
+                                    </>
+                                  ) : fallbackContent ? (
+                                    <p className="text-sm whitespace-pre-wrap">{fallbackContent}</p>
+                                  ) : (
+                                    <p className="text-sm text-dark-500 italic">No report</p>
+                                  )}
+                                </div>
+                              </section>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </div>
+      </Dialog>
+    </Transition>
+  );
+}
+
 function StandupDetail({ standup, onBack }) {
   if (!standup) return null;
 
-  // Only show agent messages (system messages are filtered at API level and also here for safety)
+  const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
   const messages = (standup.messages || []).filter((m) => m.kind === 'agent');
 
   return (
@@ -186,6 +335,15 @@ function StandupDetail({ standup, onBack }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setNotesDrawerOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dark-600 bg-dark-800 text-dark-300 hover:bg-dark-700 hover:text-dark-100 hover:border-dark-500 transition-colors"
+            title="Standup Notes"
+          >
+            <DocumentTextIcon className="w-5 h-5" />
+            <span className="text-sm font-medium hidden sm:inline">Standup Notes</span>
+          </button>
           {standup.status === 'completed' && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600/10 border border-green-500/20 rounded-full">
               <CheckCircleIcon className="w-4 h-4 text-green-500" />
@@ -207,7 +365,7 @@ function StandupDetail({ standup, onBack }) {
         </div>
       </div>
 
-      {/* Agent transcript */}
+      {/* Agent messages (transcript) */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 ? (
           <div className="text-center py-12">
@@ -217,7 +375,7 @@ function StandupDetail({ standup, onBack }) {
           messages.map((message) => {
             const agentEntry = standup.entries?.find((e) => e.agent_id === message.agent_id);
             const displayName = agentEntry?.user_name || message.agent_id;
-            const avatarUrl  = agentEntry?.avatar_url || null;
+            const avatarUrl = agentEntry?.avatar_url || null;
 
             return (
               <div key={message.id} className="flex gap-3">
@@ -246,6 +404,12 @@ function StandupDetail({ standup, onBack }) {
           })
         )}
       </div>
+
+      <StandupNotesDrawer
+        isOpen={notesDrawerOpen}
+        onClose={() => setNotesDrawerOpen(false)}
+        standup={standup}
+      />
     </div>
   );
 }

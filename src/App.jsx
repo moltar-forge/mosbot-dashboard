@@ -64,7 +64,7 @@ function App() {
             <Route path="/subagents" element={<Layout><Subagents /></Layout>} />
             <Route path="/scheduler" element={<Layout><CronJobs /></Layout>} />
             <Route path="/cron-jobs" element={<Navigate to="/scheduler" replace />} />
-            <Route path="/standup" element={<Layout><Standup /></Layout>} />
+            <Route path="/standups" element={<Layout><Standup /></Layout>} />
             <Route path="/log" element={<Layout><Log /></Layout>} />
             <Route path="/archived" element={<Layout><Archived /></Layout>} />
             <Route path="/settings" element={<Layout><Settings /></Layout>} />

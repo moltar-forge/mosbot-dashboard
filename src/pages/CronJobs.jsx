@@ -1302,6 +1302,24 @@ export default function CronJobs() {
           ) : filter === 'all' ? (
             /* Sectioned view: Cron (Gateway) vs Heartbeat (Config) */
             <div className="space-y-8">
+              {/* When both sections are empty, show a single prominent empty state */}
+              {scheduledJobs.length === 0 && heartbeatJobs.length === 0 ? (
+                <section className="text-center py-10 px-4 bg-dark-800/50 border border-dark-700 rounded-lg">
+                  <CalendarDaysIcon className="w-12 h-12 text-dark-500 mx-auto mb-3" />
+                  <p className="text-dark-300 font-medium mb-1">No scheduled jobs yet</p>
+                  <p className="text-sm text-dark-500 max-w-md mx-auto mb-4">
+                    Create a gateway job with the button above, or configure agent heartbeats in OpenClaw to see them here.
+                  </p>
+                  <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded transition-colors"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    Create Job
+                  </button>
+                </section>
+              ) : null}
+
               {/* Cron (Gateway) Section */}
               <section>
                 <div className="flex items-center gap-3 mb-3">
@@ -1313,7 +1331,9 @@ export default function CronJobs() {
                   </span>
                 </div>
                 {scheduledJobs.length === 0 ? (
-                  <p className="text-sm text-dark-500 py-4">No gateway-scheduled jobs</p>
+                  <p className="text-sm text-dark-500 py-4">
+                    No gateway-scheduled jobs. Use &quot;Create Job&quot; above to add one.
+                  </p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {scheduledJobs.map((job) => (
@@ -1343,7 +1363,9 @@ export default function CronJobs() {
                   </span>
                 </div>
                 {heartbeatJobs.length === 0 ? (
-                  <p className="text-sm text-dark-500 py-4">No config heartbeats</p>
+                  <p className="text-sm text-dark-500 py-4">
+                    No agent heartbeats. Configure <code className="text-dark-400 bg-dark-800 px-1 rounded">heartbeat</code> in OpenClaw agent config to see them here.
+                  </p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {heartbeatJobs.map((job) => (
