@@ -109,7 +109,7 @@ export default function KanbanPage() {
   return (
     <div className="flex flex-col h-full">
       <Header 
-        title="Kanban Board" 
+        title="Task Board" 
         subtitle="Drag and drop tasks to manage workflow and track progress"
         onCreateTask={handleCreateTask}
         onRefresh={handleRefresh}

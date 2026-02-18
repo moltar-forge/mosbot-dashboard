@@ -58,20 +58,38 @@ export default function Sidebar({ onCloseMobile }) {
 
   // Dynamic navigation with agent-aware workspace link
   const navigation = [
-    { name: 'Task Manager', href: '/task-manager', icon: ChartPieIcon },
-    { name: 'Kanban', href: '/kanban', icon: RectangleGroupIcon },
-    { name: 'Standups', href: '/standups', icon: MegaphoneIcon },
-    { name: 'Org Chart', href: '/org-chart', icon: ChartBarIcon },
-    // { name: 'Subagents', href: '/subagents', icon: CpuChipIcon }, // Hidden: Task Manager + Org Chart cover this
-    { name: 'Scheduler', href: '/scheduler', icon: CalendarDaysIcon },
-    { name: 'Workspaces', href: `/workspaces/${getDefaultAgent()?.id || 'coo'}`, icon: FolderIcon },
-    { name: 'Docs', href: '/docs', icon: DocumentTextIcon },
-    { name: 'Log', href: '/log', icon: ClipboardDocumentListIcon },
-    { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, subpages: [
-      { name: 'Users', href: '/settings/users', icon: UserIcon },
-      { name: 'Model Fleet', href: '/settings/model-fleet', icon: CubeIcon },
-    ]},
-    { name: 'Archived', href: '/archived', icon: ArchiveBoxIcon },
+    {
+      items: [
+        { name: 'Agent Monitor', href: '/monitor', icon: ChartPieIcon },
+        { name: 'Task Board', href: '/tasks', icon: RectangleGroupIcon },
+        { name: 'Standups', href: '/standups', icon: MegaphoneIcon },
+      ],
+    },
+    {
+      label: 'Org',
+      items: [
+        { name: 'Org Chart', href: '/org-chart', icon: ChartBarIcon },
+        { name: 'Workspaces', href: `/workspaces/${getDefaultAgent()?.id || 'coo'}`, icon: FolderIcon },
+      ],
+    },
+    {
+      label: 'Ops',
+      items: [
+        { name: 'Scheduler', href: '/scheduler', icon: CalendarDaysIcon },
+        { name: 'Log', href: '/log', icon: ClipboardDocumentListIcon },
+      ],
+    },
+    {
+      label: 'System',
+      items: [
+        { name: 'Docs', href: '/docs', icon: DocumentTextIcon },
+        { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, subpages: [
+          { name: 'Users', href: '/settings/users', icon: UserIcon },
+          { name: 'Model Fleet', href: '/settings/model-fleet', icon: CubeIcon },
+        ]},
+        { name: 'Archived', href: '/archived', icon: ArchiveBoxIcon },
+      ],
+    },
   ];
 
   const handleLogout = () => {
@@ -106,98 +124,109 @@ export default function Sidebar({ onCloseMobile }) {
       </Suspense>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {navigation.map((item) => {
-            const hasSubpages = item.subpages && item.subpages.length > 0;
-            // For items with subpages, highlight parent only when on the exact parent route (not a subpage)
-            // For items without subpages, highlight if on the route
-            const isActive = hasSubpages 
-              ? location.pathname === item.href
-              : item.href === '/workspaces'
-                ? location.pathname.startsWith('/workspaces')
-                : item.href === '/docs'
-                  ? location.pathname.startsWith('/docs')
-                  : location.pathname === item.href;
-            const isExpanded = expandedItems[item.name] || (item.subpages && item.subpages.some(sub => location.pathname === sub.href));
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
+        {navigation.map((group, groupIndex) => (
+          <div key={groupIndex} className={groupIndex > 0 ? 'mt-4' : ''}>
+            {group.label && (
+              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-dark-600">
+                {group.label}
+              </p>
+            )}
+            <div className="space-y-1">
+              {group.items.map((item) => {
+                const hasSubpages = item.subpages && item.subpages.length > 0;
+                const isActive = hasSubpages
+                  ? location.pathname === item.href
+                  : item.href === '/workspaces'
+                    ? location.pathname.startsWith('/workspaces')
+                    : item.href === '/docs'
+                      ? location.pathname.startsWith('/docs')
+                      : item.href === '/tasks'
+                        ? location.pathname === '/tasks'
+                        : location.pathname === item.href;
+                const isExpanded = expandedItems[item.name] || (item.subpages && item.subpages.some(sub => location.pathname === sub.href));
 
-            return (
-              <div key={item.name}>
-                {hasSubpages ? (
-                  <>
-                    <button
-                      onClick={() => toggleExpanded(item.name)}
-                      className={classNames(
-                        'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200',
-                        isActive
-                          ? 'bg-primary-600 text-white'
-                          : 'text-dark-400 hover:bg-dark-800 hover:text-dark-200'
-                      )}
-                    >
-                      <item.icon className="w-5 h-5" />
-                      <span className="flex-1 text-left">{item.name}</span>
-                      <ChevronRightIcon
+                return (
+                  <div key={item.name}>
+                    {hasSubpages ? (
+                      <>
+                        <button
+                          onClick={() => toggleExpanded(item.name)}
+                          className={classNames(
+                            'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200',
+                            isActive
+                              ? 'bg-primary-600 text-white'
+                              : 'text-dark-400 hover:bg-dark-800 hover:text-dark-200'
+                          )}
+                        >
+                          <item.icon className="w-5 h-5" />
+                          <span className="flex-1 text-left">{item.name}</span>
+                          <ChevronRightIcon
+                            className={classNames(
+                              'w-4 h-4 transition-transform duration-200',
+                              isExpanded ? 'rotate-90' : ''
+                            )}
+                          />
+                        </button>
+                        {isExpanded && (
+                          <div className="ml-4 mt-1 space-y-1">
+                            {item.subpages.map((subpage) => {
+                              const isSubActive = location.pathname === subpage.href;
+                              return (
+                                <Link
+                                  key={subpage.name}
+                                  to={subpage.href}
+                                  onClick={onCloseMobile}
+                                  className={classNames(
+                                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200',
+                                    isSubActive
+                                      ? 'bg-primary-600 text-white'
+                                      : 'text-dark-400 hover:bg-dark-800 hover:text-dark-200'
+                                  )}
+                                >
+                                  <subpage.icon className="w-4 h-4" />
+                                  {subpage.name}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <Link
+                        to={item.href}
+                        onClick={onCloseMobile}
                         className={classNames(
-                          'w-4 h-4 transition-transform duration-200',
-                          isExpanded ? 'rotate-90' : ''
+                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200',
+                          isActive
+                            ? 'bg-primary-600 text-white'
+                            : 'text-dark-400 hover:bg-dark-800 hover:text-dark-200'
                         )}
-                      />
-                    </button>
-                    {isExpanded && (
-                      <div className="ml-4 mt-1 space-y-1">
-                        {item.subpages.map((subpage) => {
-                          const isSubActive = location.pathname === subpage.href;
-                          return (
-                            <Link
-                              key={subpage.name}
-                              to={subpage.href}
-                              onClick={onCloseMobile}
-                              className={classNames(
-                                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200',
-                                isSubActive
-                                  ? 'bg-primary-600 text-white'
-                                  : 'text-dark-400 hover:bg-dark-800 hover:text-dark-200'
-                              )}
-                            >
-                              <subpage.icon className="w-4 h-4" />
-                              {subpage.name}
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <Link
-                    to={item.href}
-                    onClick={onCloseMobile}
-                    className={classNames(
-                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200',
-                      isActive
-                        ? 'bg-primary-600 text-white'
-                        : 'text-dark-400 hover:bg-dark-800 hover:text-dark-200'
-                    )}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="flex-1 text-left">{item.name}</span>
-                    {item.href === '/scheduler' && (attention.errors > 0 || attention.missed > 0) && (
-                      <span className="flex items-center gap-1.5">
-                        {attention.errors > 0 && (
-                          <span className="min-w-[1.25rem] px-1.5 py-0.5 text-[10px] font-semibold rounded bg-red-500/90 text-white" title="Jobs in error">
-                            {attention.errors}
+                      >
+                        <item.icon className="w-5 h-5" />
+                        <span className="flex-1 text-left">{item.name}</span>
+                        {item.href === '/scheduler' && (attention.errors > 0 || attention.missed > 0) && (
+                          <span className="flex items-center gap-1.5">
+                            {attention.errors > 0 && (
+                              <span className="min-w-[1.25rem] px-1.5 py-0.5 text-[10px] font-semibold rounded bg-red-500/90 text-white" title="Jobs in error">
+                                {attention.errors}
+                              </span>
+                            )}
+                            {attention.missed > 0 && (
+                              <span className="min-w-[1.25rem] px-1.5 py-0.5 text-[10px] font-semibold rounded bg-yellow-500/90 text-dark-900" title="Missed runs">
+                                {attention.missed}
+                              </span>
+                            )}
                           </span>
                         )}
-                        {attention.missed > 0 && (
-                          <span className="min-w-[1.25rem] px-1.5 py-0.5 text-[10px] font-semibold rounded bg-yellow-500/90 text-dark-900" title="Missed runs">
-                            {attention.missed}
-                          </span>
-                        )}
-                      </span>
+                      </Link>
                     )}
-                  </Link>
-                )}
-              </div>
-            );
-          })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* User Profile with Dropdown */}

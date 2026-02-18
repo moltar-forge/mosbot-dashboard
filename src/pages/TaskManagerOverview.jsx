@@ -23,6 +23,7 @@ export default function TaskManagerOverview() {
   const dailyCost = useBotStore((state) => state.dailyCost);
 
   const [selectedSession, setSelectedSession] = useState(null);
+  const [activeTab, setActiveTab] = useState('live');
 
   // Recent cron/heartbeat activity
   const [recentJobs, setRecentJobs] = useState([]);
@@ -241,8 +242,8 @@ export default function TaskManagerOverview() {
   return (
     <div className="flex flex-col h-full">
       <Header 
-        title="Task Manager Overview" 
-        subtitle="Real-time monitoring of agent sessions and task metrics"
+        title="Agent Monitor" 
+        subtitle="Live view of all agent sessions, scheduled jobs, and recent activity"
         onRefresh={handleRefresh}
       />
       
@@ -264,7 +265,7 @@ export default function TaskManagerOverview() {
               color="yellow"
             />
             <StatCard 
-              label="Total Sessions"
+              label="All Sessions"
               value={allDisplayedSessions.length}
               icon={ChartBarIcon}
               color="blue"
@@ -285,33 +286,79 @@ export default function TaskManagerOverview() {
             />
           </div>
 
-          {/* Running Sessions — always shown, displays empty state when no sessions */}
-          <SessionList 
-            sessions={runningSessions}
-            title="Running Sessions"
-            emptyMessage="No running sessions"
-            onSessionClick={handleSessionClick}
-          />
+          {/* Tab bar */}
+          <div className="flex border-b border-dark-800">
+            <button
+              onClick={() => setActiveTab('live')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'live'
+                  ? 'border-primary-500 text-primary-400'
+                  : 'border-transparent text-dark-400 hover:text-dark-200'
+              }`}
+            >
+              Live Sessions
+              {runningCount > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-green-500/20 text-green-400">
+                  {runningCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('activity')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'activity'
+                  ? 'border-primary-500 text-primary-400'
+                  : 'border-transparent text-dark-400 hover:text-dark-200'
+              }`}
+            >
+              Recent Activity
+              {recentActivitySessions.length > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-dark-700 text-dark-400">
+                  {recentActivitySessions.length}
+                </span>
+              )}
+            </button>
+          </div>
 
-          {/* Recent Activity — cron and heartbeat job runs */}
-          {jobsLoaded && recentActivitySessions.length > 0 && (
-            <SessionList
-              sessions={recentActivitySessions}
-              title="Recent Activity"
-              emptyMessage="No recent activity"
-              onSessionClick={handleSessionClick}
-              displayActiveAsIdle
-            />
+          {/* Tab content */}
+          {activeTab === 'live' && (
+            <div className="space-y-6">
+              <SessionList
+                sessions={runningSessions}
+                title="Running Sessions"
+                emptyMessage="No running sessions"
+                onSessionClick={handleSessionClick}
+              />
+              <SessionList
+                sessions={[...activeSessions, ...idleSessions]}
+                title="Idle Sessions"
+                emptyMessage="No idle sessions"
+                onSessionClick={handleSessionClick}
+                displayActiveAsIdle
+              />
+            </div>
           )}
 
-          {/* Idle Sessions — active + idle (non-running); fallback when none are running */}
-          <SessionList 
-            sessions={[...activeSessions, ...idleSessions]}
-            title="Idle Sessions"
-            emptyMessage="No idle sessions"
-            onSessionClick={handleSessionClick}
-            displayActiveAsIdle
-          />
+          {activeTab === 'activity' && (
+            <div>
+              {!jobsLoaded ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="text-center">
+                    <div className="inline-block w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <p className="text-sm text-dark-500">Loading recent activity...</p>
+                  </div>
+                </div>
+              ) : (
+                <SessionList
+                  sessions={recentActivitySessions}
+                  title="Recent Activity"
+                  emptyMessage="No recent cron or heartbeat activity"
+                  onSessionClick={handleSessionClick}
+                  displayActiveAsIdle
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
 
