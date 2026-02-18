@@ -5,7 +5,6 @@ import {
   ChartBarIcon, 
   CurrencyDollarIcon,
   CircleStackIcon,
-  FunnelIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Header from '../components/Header';
@@ -38,7 +37,6 @@ export default function TaskManagerOverview() {
   const [activeTab, setActiveTab] = useState('live');
   const [filterTypes, setFilterTypes] = useState([]);
   const [filterAgents, setFilterAgents] = useState([]);
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   // Recent cron/heartbeat activity
   const [recentJobs, setRecentJobs] = useState([]);
@@ -317,112 +315,93 @@ export default function TaskManagerOverview() {
             />
           </div>
 
-          {/* Multi-filter: by type and agent */}
-          <div className="bg-dark-900 border border-dark-800 rounded-lg p-4">
-            <button
-              type="button"
-              onClick={() => setFiltersExpanded(!filtersExpanded)}
-              className="flex items-center gap-2 text-sm font-medium text-dark-200 hover:text-dark-100 w-full"
-            >
-              <FunnelIcon className="w-5 h-5 text-dark-500" />
-              Filters
-              {(filterTypes.length > 0 || filterAgents.length > 0) && (
-                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-primary-500/20 text-primary-400">
-                  {filterTypes.length + filterAgents.length} active
-                </span>
-              )}
-            </button>
-            {filtersExpanded && (
-              <div className="mt-4 space-y-4 pt-4 border-t border-dark-800">
-                {/* Type filter */}
-                <div>
-                  <p className="text-xs font-medium text-dark-500 uppercase tracking-wider mb-2">Type</p>
-                  <div className="flex flex-wrap gap-2">
-                    {SESSION_TYPES.map(({ id, label }) => {
-                      const isSelected = filterTypes.includes(id);
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() =>
-                            setFilterTypes((prev) =>
-                              isSelected ? prev.filter((t) => t !== id) : [...prev, id]
-                            )
-                          }
-                          className={classNames(
-                            "px-3 py-1.5 text-sm font-medium rounded-full border transition-colors",
-                            isSelected
-                              ? "bg-primary-500/20 text-primary-400 border-primary-500/40"
-                              : "bg-dark-800 text-dark-400 border-dark-700 hover:border-dark-600"
-                          )}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                {/* Agent filter */}
-                <div>
-                  <p className="text-xs font-medium text-dark-500 uppercase tracking-wider mb-2">Agent</p>
-                  <div className="flex flex-wrap gap-2">
-                    {/* Include "main" for legacy main-agent sessions */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFilterAgents((prev) =>
-                          prev.includes("main")
-                            ? prev.filter((a) => a !== "main")
-                            : [...prev, "main"]
-                        )
-                      }
-                      className={classNames(
-                        "px-3 py-1.5 text-sm font-medium rounded-full border transition-colors",
-                        filterAgents.includes("main")
-                          ? "bg-primary-500/20 text-primary-400 border-primary-500/40"
-                          : "bg-dark-800 text-dark-400 border-dark-700 hover:border-dark-600"
-                      )}
-                    >
-                      Main
-                    </button>
-                    {agents.map((agent) => {
-                      const isSelected = filterAgents.includes(agent.id);
-                      return (
-                        <button
-                          key={agent.id}
-                          type="button"
-                          onClick={() =>
-                            setFilterAgents((prev) =>
-                              isSelected ? prev.filter((a) => a !== agent.id) : [...prev, agent.id]
-                            )
-                          }
-                          className={classNames(
-                            "px-3 py-1.5 text-sm font-medium rounded-full border transition-colors",
-                            isSelected
-                              ? "bg-primary-500/20 text-primary-400 border-primary-500/40"
-                              : "bg-dark-800 text-dark-400 border-dark-700 hover:border-dark-600"
-                          )}
-                        >
-                          {agent.name || agent.id}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                {(filterTypes.length > 0 || filterAgents.length > 0) && (
+          {/* Inline filter bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 py-1">
+            {/* Type pills */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-medium text-dark-500 uppercase tracking-wider flex-shrink-0">Type</span>
+              {SESSION_TYPES.map(({ id, label }) => {
+                const isSelected = filterTypes.includes(id);
+                return (
                   <button
+                    key={id}
                     type="button"
-                    onClick={() => {
-                      setFilterTypes([]);
-                      setFilterAgents([]);
-                    }}
-                    className="flex items-center gap-1.5 text-sm text-dark-500 hover:text-dark-200"
+                    onClick={() =>
+                      setFilterTypes((prev) =>
+                        isSelected ? prev.filter((t) => t !== id) : [...prev, id]
+                      )
+                    }
+                    className={classNames(
+                      "px-2.5 py-1 text-xs font-medium rounded-full border transition-colors",
+                      isSelected
+                        ? "bg-primary-500/20 text-primary-400 border-primary-500/40"
+                        : "bg-dark-800 text-dark-400 border-dark-700 hover:border-dark-600 hover:text-dark-200"
+                    )}
                   >
-                    <XMarkIcon className="w-4 h-4" />
-                    Clear filters
+                    {label}
                   </button>
+                );
+              })}
+            </div>
+
+            <div className="hidden sm:block w-px h-5 bg-dark-700 flex-shrink-0" />
+
+            {/* Agent pills */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-medium text-dark-500 uppercase tracking-wider flex-shrink-0">Agent</span>
+              <button
+                type="button"
+                onClick={() =>
+                  setFilterAgents((prev) =>
+                    prev.includes("main") ? prev.filter((a) => a !== "main") : [...prev, "main"]
+                  )
+                }
+                className={classNames(
+                  "px-2.5 py-1 text-xs font-medium rounded-full border transition-colors",
+                  filterAgents.includes("main")
+                    ? "bg-primary-500/20 text-primary-400 border-primary-500/40"
+                    : "bg-dark-800 text-dark-400 border-dark-700 hover:border-dark-600 hover:text-dark-200"
                 )}
-              </div>
+              >
+                Main
+              </button>
+              {agents.map((agent) => {
+                const isSelected = filterAgents.includes(agent.id);
+                return (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    onClick={() =>
+                      setFilterAgents((prev) =>
+                        isSelected ? prev.filter((a) => a !== agent.id) : [...prev, agent.id]
+                      )
+                    }
+                    className={classNames(
+                      "px-2.5 py-1 text-xs font-medium rounded-full border transition-colors",
+                      isSelected
+                        ? "bg-primary-500/20 text-primary-400 border-primary-500/40"
+                        : "bg-dark-800 text-dark-400 border-dark-700 hover:border-dark-600 hover:text-dark-200"
+                    )}
+                  >
+                    {agent.icon ? `${agent.icon} ` : ""}{agent.name || agent.id}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Clear — only visible when active */}
+            {(filterTypes.length > 0 || filterAgents.length > 0) && (
+              <>
+                <div className="hidden sm:block w-px h-5 bg-dark-700 flex-shrink-0" />
+                <button
+                  type="button"
+                  onClick={() => { setFilterTypes([]); setFilterAgents([]); }}
+                  className="flex items-center gap-1 text-xs text-dark-500 hover:text-dark-200 transition-colors flex-shrink-0"
+                >
+                  <XMarkIcon className="w-3.5 h-3.5" />
+                  Clear
+                </button>
+              </>
             )}
           </div>
 
