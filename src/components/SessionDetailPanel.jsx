@@ -178,8 +178,8 @@ export default function SessionDetailPanel({ isOpen, onClose, session }) {
                                 {session?.agent && (
                                   <div className="flex items-center gap-1.5 text-sm">
                                     <span className="text-dark-500">Agent:</span>
-                                    <span className="text-dark-200 font-medium uppercase">
-                                      {session.agent}
+                                    <span className="text-dark-200 font-medium">
+                                      {agent?.name || session.agent}
                                     </span>
                                   </div>
                                 )}

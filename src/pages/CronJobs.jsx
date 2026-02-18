@@ -298,7 +298,7 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, onJobCl
               <>
                 <span className="text-dark-600">•</span>
                 <span className="text-dark-500">Agent:</span>
-                <span className="text-primary-400 font-medium uppercase">{agentId}</span>
+                <span className="text-primary-400 font-medium">{agent?.name || agentId}</span>
               </>
             )}
             {displayModel && (
@@ -1264,7 +1264,7 @@ export default function CronJobs() {
               {agents.map((agent) => (
                 <FilterChip
                   key={agent.id}
-                  label={`${agent.icon} ${agent.id.toUpperCase()}`}
+                  label={`${agent.icon} ${agent.name || agent.id}`}
                   value={`agent-${agent.id}`}
                   count={agentJobCounts[agent.id] || 0}
                 />
