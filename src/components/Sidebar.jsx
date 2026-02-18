@@ -22,6 +22,8 @@ import {
 import { classNames } from '../utils/helpers';
 import { useAuthStore } from '../stores/authStore';
 import { useAgentStore } from '../stores/agentStore';
+import { useSchedulerStore } from '../stores/schedulerStore';
+import { getSchedulerStats } from '../api/client';
 
 const BotAvatar = lazy(() => import('./BotAvatar'));
 
@@ -30,6 +32,8 @@ export default function Sidebar({ onCloseMobile }) {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { getDefaultAgent, fetchAgents, agents } = useAgentStore();
+  const attention = useSchedulerStore((state) => state.attention);
+  const setAttention = useSchedulerStore((state) => state.setAttention);
   const [expandedItems, setExpandedItems] = useState({});
 
   // Fetch agents on mount for dynamic navigation
@@ -38,6 +42,19 @@ export default function Sidebar({ onCloseMobile }) {
       fetchAgents();
     }
   }, [agents.length, fetchAgents]);
+
+  // Fetch scheduler attention stats on mount for sidebar badges (no need to visit Scheduler page)
+  useEffect(() => {
+    let cancelled = false;
+    getSchedulerStats()
+      .then((data) => {
+        if (!cancelled && data) {
+          setAttention({ errors: data.errors ?? 0, missed: data.missed ?? 0 });
+        }
+      })
+      .catch(() => { /* ignore - badges will show 0 or last known values */ });
+    return () => { cancelled = true; };
+  }, [setAttention]);
 
   // Dynamic navigation with agent-aware workspace link
   const navigation = [
@@ -161,7 +178,21 @@ export default function Sidebar({ onCloseMobile }) {
                     )}
                   >
                     <item.icon className="w-5 h-5" />
-                    {item.name}
+                    <span className="flex-1 text-left">{item.name}</span>
+                    {item.href === '/scheduler' && (attention.errors > 0 || attention.missed > 0) && (
+                      <span className="flex items-center gap-1.5">
+                        {attention.errors > 0 && (
+                          <span className="min-w-[1.25rem] px-1.5 py-0.5 text-[10px] font-semibold rounded bg-red-500/90 text-white" title="Jobs in error">
+                            {attention.errors}
+                          </span>
+                        )}
+                        {attention.missed > 0 && (
+                          <span className="min-w-[1.25rem] px-1.5 py-0.5 text-[10px] font-semibold rounded bg-yellow-500/90 text-dark-900" title="Missed runs">
+                            {attention.missed}
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </Link>
                 )}
               </div>

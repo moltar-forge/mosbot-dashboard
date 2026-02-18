@@ -10,8 +10,10 @@ import Header from "../components/Header";
 import MarkdownRenderer from "../components/MarkdownRenderer";
 import SessionDetailPanel from "../components/SessionDetailPanel";
 import { api, getCronJobs, createCronJob, updateCronJob, deleteCronJob, setCronJobEnabled, triggerCronJob, getInstanceConfig } from "../api/client";
+import { stripMarkdown } from "../utils/helpers";
 import { useToastStore } from '../stores/toastStore';
 import { useAgentStore } from '../stores/agentStore';
+import { useSchedulerStore } from '../stores/schedulerStore';
 import logger from '../utils/logger';
 
 // Import the existing CronJobRow component styling logic
@@ -344,7 +346,7 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, onJobCl
               {!isExpanded ? (
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-dark-400 line-clamp-1 flex-1">
-                    {prompt}
+                    {stripMarkdown(prompt)}
                   </p>
                   <button
                     onClick={(e) => {
@@ -1048,6 +1050,7 @@ export default function CronJobs() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [instanceTimezone, setInstanceTimezone] = useState('UTC');
   const showToast = useToastStore((state) => state.showToast);
+  const setAttention = useSchedulerStore((state) => state.setAttention);
 
   const loadJobs = useCallback(async () => {
     try {
@@ -1135,9 +1138,13 @@ export default function CronJobs() {
   // Calculate stats
   const enabledCount = jobs.filter(j => j.enabled !== false).length;
   const disabledCount = jobs.filter(j => j.enabled === false).length;
-  
-  // Find next upcoming job (only future runs, ignore missed)
   const now = new Date();
+  const errorCount = jobs.filter(j => j.status === 'error').length;
+  const missedCount = jobs.filter(
+    j => j.enabled !== false && j.nextRunAt && new Date(j.nextRunAt) < now
+  ).length;
+
+  // Find next upcoming job (only future runs, ignore missed)
   const nextJob = jobs
     .filter(j => j.enabled !== false && j.nextRunAt && new Date(j.nextRunAt) > now)
     .sort((a, b) => new Date(a.nextRunAt) - new Date(b.nextRunAt))[0];
@@ -1147,6 +1154,13 @@ export default function CronJobs() {
     acc[agent.id] = jobs.filter(j => j.agentId === agent.id).length;
     return acc;
   }, {});
+
+  // Sync attention counts to store for sidebar badges (only when done loading to avoid flashing 0)
+  useEffect(() => {
+    if (!isLoading) {
+      setAttention({ errors: errorCount, missed: missedCount });
+    }
+  }, [isLoading, errorCount, missedCount, setAttention]);
 
   const FilterChip = ({ label, value, count }) => {
     const isActive = filter === value;
@@ -1204,7 +1218,7 @@ export default function CronJobs() {
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Summary Stats Bar */}
           {!isLoading && jobs.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="p-4 bg-dark-800 border border-dark-700 rounded-lg">
                 <p className="text-xs text-dark-500 uppercase tracking-wide font-medium mb-1">Total Jobs</p>
                 <p className="text-2xl font-bold text-dark-100">{jobs.length}</p>
@@ -1215,6 +1229,14 @@ export default function CronJobs() {
                   <span className="text-green-400">{enabledCount}</span>
                   <span className="text-dark-600 mx-2">/</span>
                   <span className="text-dark-500">{disabledCount}</span>
+                </p>
+              </div>
+              <div className="p-4 bg-dark-800 border border-dark-700 rounded-lg">
+                <p className="text-xs text-dark-500 uppercase tracking-wide font-medium mb-1">Errors / Missed</p>
+                <p className="text-2xl font-bold text-dark-100">
+                  <span className={errorCount > 0 ? 'text-red-400' : 'text-dark-500'}>{errorCount}</span>
+                  <span className="text-dark-600 mx-2">/</span>
+                  <span className={missedCount > 0 ? 'text-yellow-400' : 'text-dark-500'}>{missedCount}</span>
                 </p>
               </div>
               <div className="p-4 bg-dark-800 border border-dark-700 rounded-lg">

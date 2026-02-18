@@ -109,8 +109,8 @@ export default function Settings() {
       // Update existing user
       await api.put(`/admin/users/${userId}`, userBasics);
       
-      // If user is an agent, update agent config
-      if (userBasics.role === 'agent' && agentId) {
+      // If user is an agent or admin with agent config, update agent config
+      if ((userBasics.role === 'agent' || userBasics.role === 'admin') && agentId) {
         await api.put(`/admin/users/${userId}/agent`, {
           agentId,
           agentConfigPatch
@@ -121,8 +121,8 @@ export default function Settings() {
       const createResponse = await api.post('/admin/users', userBasics);
       const newUserId = createResponse.data.data.id;
       
-      // If new user is an agent, configure agent settings
-      if (userBasics.role === 'agent' && agentId) {
+      // If new user is an agent or admin with agent config, configure agent settings
+      if ((userBasics.role === 'agent' || userBasics.role === 'admin') && agentId) {
         await api.put(`/admin/users/${newUserId}/agent`, {
           agentId,
           agentConfigPatch

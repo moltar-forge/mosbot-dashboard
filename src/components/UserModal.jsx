@@ -108,8 +108,9 @@ export default function UserModal({ isOpen, onClose, user = null, onSave }) {
         userData.password = formData.password;
       }
       
-      // If user is an agent, add agent-specific fields
-      if (formData.role === 'agent') {
+      // If user is an agent or admin (admin can also have agent config), add agent-specific fields
+      const isAgentOrAdminWithConfig = formData.role === 'agent' || formData.role === 'admin';
+      if (isAgentOrAdminWithConfig) {
         userData.agentId = formData.agentId;
         
         // Build agentConfigPatch
@@ -212,8 +213,8 @@ export default function UserModal({ isOpen, onClose, user = null, onSave }) {
                       </div>
                     )}
 
-                    {/* Two-column layout for agent forms */}
-                    <div className={formData.role === 'agent' ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : ''}>
+                    {/* Two-column layout when showing agent config (agent or admin) */}
+                    <div className={formData.role === 'agent' || formData.role === 'admin' ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : ''}>
                       {/* Left column: Basic user fields */}
                       <div className="space-y-4">
                         {/* Name */}
@@ -323,8 +324,8 @@ export default function UserModal({ isOpen, onClose, user = null, onSave }) {
                       </div>
                       {/* End left column */}
 
-                  {/* Agent-specific fields - Right column */}
-                  {formData.role === 'agent' && (
+                  {/* Agent-specific fields - Right column (agent or admin; admin can also be an agent) */}
+                  {(formData.role === 'agent' || formData.role === 'admin') && (
                     <div className="space-y-4 lg:border-l lg:border-dark-700 lg:pl-6">
                       <div>
                         <h3 className="text-base font-semibold text-primary-400 mb-4 flex items-center gap-2">

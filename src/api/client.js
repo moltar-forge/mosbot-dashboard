@@ -176,6 +176,11 @@ export const getCronJobs = async () => {
   return response.data.data;
 };
 
+export const getSchedulerStats = async () => {
+  const response = await api.get("/openclaw/cron-jobs/stats", { timeout: 15000 });
+  return response.data.data;
+};
+
 // Create a new cron job (admin only)
 export const createCronJob = async (payload) => {
   const response = await api.post("/openclaw/cron-jobs", payload);
