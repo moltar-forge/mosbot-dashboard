@@ -309,7 +309,7 @@ export default function BotAvatar({ enableEyeTracking = false }) {
       `}</style>
       
       {/* Large Avatar */}
-      <div className="flex flex-col items-center mb-6">
+      <div className="flex flex-col items-center mb-2">
         <div 
           ref={avatarRef}
           className="relative w-28 h-28 mb-4"
@@ -512,29 +512,12 @@ export default function BotAvatar({ enableEyeTracking = false }) {
         )}>
           <span className="transition-opacity duration-300">
             {activityStatus === 'Offline' ? 'Offline' :
-             activityStatus === 'Working' ? 'Running' : 'Online'}
+             activityStatus === 'Working'
+               ? (sessionCounts.running > 0
+                 ? `${sessionCounts.running} agent${sessionCounts.running > 1 ? 's' : ''} running...`
+                 : 'Running')
+               : 'Online'}
           </span>
-        </div>
-      </div>
-
-      {/* Teletext Style Status Bar */}
-      <div
-        className={classNames(
-          'w-full px-4 py-3 rounded-lg text-xs font-bold transition-all duration-300',
-          'teletext-display',
-          'bg-dark-800/80 border-2 border-dark-700/50 backdrop-blur-sm'
-        )}
-        style={{
-          fontFamily: "'Courier New', 'Courier', monospace",
-          lineHeight: '1.4',
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <span className="select-none opacity-60">■</span>
-          <span className="flex-1 text-center px-2 teletext-message status-text">
-            {getStatusMessage()}
-          </span>
-          <span className="select-none opacity-60">■</span>
         </div>
       </div>
     </div>
