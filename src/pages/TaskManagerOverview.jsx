@@ -13,9 +13,10 @@ import SessionList from '../components/SessionList';
 import SessionDetailPanel from '../components/SessionDetailPanel';
 import { useBotStore } from '../stores/botStore';
 import { useAgentStore } from '../stores/agentStore';
-import { getCronJobs } from '../api/client';
+import { getCronJobs, deleteCronJob, deleteSession } from '../api/client';
 import logger from '../utils/logger';
 import { classNames } from '../utils/helpers';
+import { useToastStore } from '../stores/toastStore';
 
 const SESSION_TYPES = [
   { id: 'main', label: 'Main' },
@@ -33,6 +34,7 @@ export default function TaskManagerOverview() {
   const dailyCost = useBotStore((state) => state.dailyCost);
   const agents = useAgentStore((state) => state.agents).filter((a) => a.id !== 'archived');
 
+  const showToast = useToastStore((state) => state.showToast);
   const [selectedSession, setSelectedSession] = useState(null);
   const [activeTab, setActiveTab] = useState('live');
   const [filterTypes, setFilterTypes] = useState([]);
@@ -115,17 +117,19 @@ export default function TaskManagerOverview() {
 
       return {
         id: `activity-${job.jobId || job.id || job.name}`,
+        jobId: job.jobId || job.id || null,
+        isDeletable: !isHeartbeat,
         key: sessionKey,
         label: job.name,
         status,
         kind: isHeartbeat ? 'heartbeat' : 'cron',
         updatedAt: job.lastRunAt ? new Date(job.lastRunAt).getTime() : null,
         agent: job.agentId || null,
-        // For cron: prefer lastExecution data, fallback to agent model
-        // For heartbeat: use agent session data
+        // For cron: use actual execution model only (avoid showing agent config model as session model)
+        // For heartbeat: use agent session data (heartbeat runs in the main session)
         model: isHeartbeat 
-          ? (agentSession?.model || job.agentModel || null)
-          : (executionData.model || job.agentModel || agentSession?.model || null),
+          ? (agentSession?.model || null)
+          : (executionUnavailable ? null : (executionData.model || null)),
         // Token / cost / context: prefer execution data for cron, use agent session for heartbeat
         // If execution data is unavailable, use null instead of 0 to trigger fallback display
         contextTokens: isHeartbeat
@@ -191,6 +195,36 @@ export default function TaskManagerOverview() {
   const handleClosePanel = useCallback(() => {
     setSelectedSession(null);
   }, []);
+
+  const handleDeleteSession = useCallback(
+    async (session) => {
+      if (!session?.jobId || !session?.isDeletable) return;
+      const confirmed = window.confirm(
+        `Delete cron job "${session.label || session.id}"? This cannot be undone.`
+      );
+      if (!confirmed) return;
+      try {
+        await deleteCronJob(session.jobId);
+        showToast("Cron job deleted successfully", "success");
+      } catch (err) {
+        const status = err.response?.status;
+        if (status === 404) {
+          showToast("Cron job already removed", "info");
+        } else {
+          showToast(
+            err.response?.data?.error?.message || "Failed to delete cron job",
+            "error"
+          );
+          return;
+        }
+      }
+      setSelectedSession((prev) =>
+        prev && (prev.jobId === session.jobId || prev.key === session.key) ? null : prev
+      );
+      await Promise.all([fetchSessions(), loadRecentActivity()]);
+    },
+    [fetchSessions, loadRecentActivity, showToast]
+  );
 
   // Filter helper: session passes if (no type filter OR kind matches) AND (no agent filter OR agent matches)
   const passesFilters = useCallback((session) => {
@@ -451,6 +485,7 @@ export default function TaskManagerOverview() {
                     : "No running sessions"
                 }
                 onSessionClick={handleSessionClick}
+                onDeleteSession={handleDeleteSession}
               />
               <SessionList
                 sessions={[...activeSessions, ...idleSessions]}
@@ -461,6 +496,7 @@ export default function TaskManagerOverview() {
                     : "No idle sessions"
                 }
                 onSessionClick={handleSessionClick}
+                onDeleteSession={handleDeleteSession}
                 displayActiveAsIdle
               />
             </div>
@@ -485,6 +521,7 @@ export default function TaskManagerOverview() {
                       : "No recent cron or heartbeat activity"
                   }
                   onSessionClick={handleSessionClick}
+                  onDeleteSession={handleDeleteSession}
                   displayActiveAsIdle
                 />
               )}

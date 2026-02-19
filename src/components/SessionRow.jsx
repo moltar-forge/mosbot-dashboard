@@ -1,8 +1,24 @@
-import { ClockIcon, CpuChipIcon, ChatBubbleLeftIcon } from "@heroicons/react/24/outline";
+import { useState } from "react";
+import { ClockIcon, CpuChipIcon, ChatBubbleLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { stripMarkdown } from "../utils/helpers";
 import { useAgentStore } from "../stores/agentStore";
 
-export default function SessionRow({ session, onClick, statusDisplay }) {
+/** Extract jobId from cron session key. Format: agent:agentId:cron:jobId or agent:agentId:cron:jobId:run:runId */
+function getCronJobIdFromKey(key) {
+  if (!key || typeof key !== "string") return null;
+  const parts = key.split(":");
+  const cronIdx = parts.indexOf("cron");
+  if (cronIdx === -1 || cronIdx + 1 >= parts.length) return null;
+  const jobId = parts[cronIdx + 1];
+  if (jobId && jobId.startsWith("heartbeat-")) return null;
+  return jobId || null;
+}
+
+export default function SessionRow({ session, onClick, onDelete, statusDisplay }) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const jobId = session.jobId ?? (session.kind === "cron" ? getCronJobIdFromKey(session.key) : null);
+  const isDeletableCron = session.isDeletable ?? (session.kind === "cron" && !!jobId);
+  const canDelete = jobId && isDeletableCron;
   const getAgentById = useAgentStore((state) => state.getAgentById);
   const agent = session.agent ? getAgentById(session.agent) : null;
   const getStatusColor = (status) => {
@@ -103,17 +119,33 @@ export default function SessionRow({ session, onClick, statusDisplay }) {
               <p className="text-base font-semibold text-dark-100 truncate">
                 {session.label || session.id}
               </p>
-              {(session.kind === 'heartbeat' || session.kind === 'cron' || session.kind === 'subagent') && (
+              {(session.kind === 'main' || session.kind === 'heartbeat' || session.kind === 'cron' || session.kind === 'subagent' || session.kind === 'hook') && (
                 <span
                   className={`px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded border flex-shrink-0 ${
-                    session.kind === 'heartbeat'
+                    session.kind === 'main'
+                      ? 'text-sky-400 bg-sky-500/10 border-sky-500/20'
+                      : session.kind === 'heartbeat'
                       ? 'text-pink-400 bg-pink-500/10 border-pink-500/20'
                       : session.kind === 'subagent'
                       ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20'
+                      : session.kind === 'hook'
+                      ? 'text-orange-400 bg-orange-500/10 border-orange-500/20'
                       : 'text-purple-400 bg-purple-500/10 border-purple-500/20'
                   }`}
                 >
-                  {session.kind === 'heartbeat' ? 'HEARTBEAT' : session.kind === 'subagent' ? 'SUBAGENT' : 'CRON'}
+                  {session.kind === 'main' ? 'MAIN' : session.kind === 'heartbeat' ? 'HEARTBEAT' : session.kind === 'subagent' ? 'SUBAGENT' : session.kind === 'hook' ? 'HOOK' : 'CRON'}
+                </span>
+              )}
+              {(session.kind === 'main' || session.kind === 'heartbeat' || session.kind === 'cron' || session.kind === 'subagent' || session.kind === 'hook') && (
+                <span
+                  className={`px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded border flex-shrink-0 ${
+                    session.kind === 'main' || session.kind === 'heartbeat'
+                      ? 'text-dark-400 bg-dark-700/50 border-dark-600/30'
+                      : 'text-amber-400/80 bg-amber-500/10 border-amber-500/20'
+                  }`}
+                  title={session.kind === 'main' || session.kind === 'heartbeat' ? 'Runs in the agent\'s persistent shared context' : 'Runs in a fresh isolated context'}
+                >
+                  {session.kind === 'main' || session.kind === 'heartbeat' ? 'SHARED' : 'ISOLATED'}
                 </span>
               )}
             </div>
@@ -145,6 +177,30 @@ export default function SessionRow({ session, onClick, statusDisplay }) {
               <ClockIcon className="w-4 h-4" />
               <span className="font-medium">{formatDuration(session.updatedAt)}</span>
             </div>
+          )}
+          {canDelete && onDelete && (
+            <button
+              type="button"
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (isDeleting) return;
+                setIsDeleting(true);
+                try {
+                  await onDelete({ ...session, jobId, isDeletable: isDeletableCron });
+                } finally {
+                  setIsDeleting(false);
+                }
+              }}
+              disabled={isDeleting}
+              className="p-1.5 rounded-md text-dark-400 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Delete cron job"
+            >
+              {isDeleting ? (
+                <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <TrashIcon className="w-4 h-4" />
+              )}
+            </button>
           )}
           <span className={`px-3 py-1.5 text-xs font-medium rounded-full border ${getStatusColor(statusDisplay ?? session.status)}`}>
             {statusDisplay ?? session.status}

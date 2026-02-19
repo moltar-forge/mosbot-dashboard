@@ -226,6 +226,13 @@ export const getOpenClawSessions = async () => {
   };
 };
 
+// Delete an OpenClaw session by session key (admin only)
+export const deleteSession = async (sessionKey) => {
+  await api.delete('/openclaw/sessions', {
+    params: { key: sessionKey }
+  });
+};
+
 // Get full message history for a specific session
 export const getSessionMessages = async (sessionKey, { limit = 50, includeTools = false } = {}) => {
   // Extract sessionId from sessionKey for the URL path
