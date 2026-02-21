@@ -8,7 +8,6 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import Header from '../components/Header';
-import LiveAgentStatus from '../components/LiveAgentStatus';
 import ActivityFeedFilters from '../components/ActivityFeedFilters';
 import logger from '../utils/logger';
 
@@ -59,12 +58,32 @@ function formatCost(cost) {
   return `$${n.toFixed(3)}`;
 }
 
+/**
+ * Human-readable label for a model id (e.g. openrouter/moonshotai/kimi-k2.5 → Kimi K2.5).
+ * Matches the format used in CronJobs.jsx and TaskManagerOverview.jsx
+ */
+function formatModel(model) {
+  if (!model) return null;
+  const modelPart = model.includes('/') ? model.split('/').pop() : model;
+  const lower = modelPart.toLowerCase();
+  if (lower.includes('kimi-k2')) return 'Kimi K2.5';
+  if (lower.includes('opus-4')) return 'Opus 4';
+  if (lower.includes('sonnet-4')) return 'Sonnet 4.5';
+  if (lower.includes('haiku-4')) return 'Haiku 4.5';
+  if (lower.includes('gemini-2.5-flash-lite')) return 'Gemini Flash Lite';
+  if (lower.includes('gemini-2.5-flash')) return 'Gemini Flash';
+  if (lower.includes('gemini-2.5')) return 'Gemini 2.5';
+  if (lower.includes('gpt-5')) return 'GPT-5.2';
+  if (lower.includes('deepseek')) return 'DeepSeek';
+  return modelPart;
+}
+
 function CronEntry({ log }) {
-  const timeLabel = format(parseDatabaseDate(log.timestamp), 'h:mm a');
-  const cost = formatCost(log.cost_usd);
-  const tokens = log.tokens_input != null
-    ? `${((log.tokens_input || 0) + (log.tokens_output || 0)).toLocaleString()} tokens`
-    : null;
+  // Show more precise timestamp to differentiate runs that happened at the same minute
+  const timestamp = parseDatabaseDate(log.timestamp);
+  const timeLabel = format(timestamp, 'h:mm a');
+  const secondsLabel = format(timestamp, ':ss');
+  const displayModel = log.model ? formatModel(log.model) : null;
 
   return (
     <div className="relative pl-8 pb-6 last:pb-0">
@@ -73,33 +92,36 @@ function CronEntry({ log }) {
         <ClockIcon className="w-2.5 h-2.5 text-dark-400" />
       </div>
 
-      <div className="text-xs text-dark-500 font-medium mb-2">{timeLabel}</div>
+      <div className="text-xs text-dark-500 font-medium mb-2">
+        {timeLabel}
+        <span className="text-dark-600">{secondsLabel}</span>
+      </div>
 
       <div className="card p-4 hover:bg-dark-800/50 transition-colors border-dark-700/50">
         <div className="flex items-start justify-between gap-3 mb-1">
-          <h3 className="text-sm font-medium text-dark-300">
-            {log.job_name || log.title}
-          </h3>
-          <div className="flex items-center gap-2 shrink-0">
-            {cost && (
-              <span className="text-xs text-dark-500 bg-dark-800 border border-dark-700 rounded px-1.5 py-0.5">
-                {cost}
-              </span>
-            )}
-            {tokens && (
-              <span className="text-xs text-dark-500 bg-dark-800 border border-dark-700 rounded px-1.5 py-0.5">
-                {tokens}
-              </span>
-            )}
+          <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+            <h3 className="text-sm font-medium text-dark-300">
+              {log.job_name || log.title}
+            </h3>
+            <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded border text-purple-400 bg-purple-500/10 border-purple-500/20">
+              CRON
+            </span>
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-dark-600 uppercase tracking-wider">Cron</span>
+        {/* Schedule info with agent and model inline - matches CronJobs.jsx style */}
+        <div className="flex items-center gap-2 mt-1.5 text-xs text-dark-400 flex-wrap">
           {log.agent_name && (
-            <span className="text-xs text-dark-500">{log.agent_name}</span>
+            <>
+              <span className="text-dark-500">Agent:</span>
+              <span className="text-primary-400 font-medium">{log.agent_name}</span>
+            </>
           )}
-          {log.model && (
-            <span className="text-xs text-dark-600 truncate max-w-[160px]">{log.model}</span>
+          {displayModel && (
+            <>
+              {log.agent_name && <span className="text-dark-600">•</span>}
+              <span className="text-dark-500">Model:</span>
+              <span className="text-dark-300 font-mono text-[11px]">{displayModel}</span>
+            </>
           )}
         </div>
       </div>
@@ -175,7 +197,6 @@ export default function Log() {
         subtitle={`Workspace-wide agent activity, cron runs, and events • ${logs.length} ${logs.length === 1 ? 'entry' : 'entries'}`}
       />
 
-      <LiveAgentStatus />
       <ActivityFeedFilters />
 
       <div className="flex-1 p-3 md:p-6 overflow-y-auto bg-dark-950">
