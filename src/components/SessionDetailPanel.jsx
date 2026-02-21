@@ -6,6 +6,8 @@ import {
   CpuChipIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  ClipboardDocumentIcon,
+  CheckIcon,
 } from "@heroicons/react/24/outline";
 import { useAgentStore } from "../stores/agentStore";
 import { getSessionMessages } from "../api/client";
@@ -14,6 +16,51 @@ import logger from "../utils/logger";
 
 // Gap threshold for detecting a new isolated run boundary
 const RUN_GAP_MS = 5 * 60 * 1000;
+
+/** Short hash display with copy-on-click for UUIDs/IDs. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function CopyableId({ label, value }) {
+  const [copied, setCopied] = useState(false);
+  if (!value) return null;
+  const isUuid = UUID_RE.test(value);
+  const display = isUuid ? `${value.slice(0, 8)}…` : value;
+
+  const handleCopy = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title={`${label} ID: ${value}`}
+      className="group flex items-center gap-1 text-xs rounded px-1.5 py-0.5 bg-dark-700/50 hover:bg-dark-700 border border-dark-600/50 hover:border-dark-600 transition-colors"
+    >
+      <span className="text-dark-500">{label}:</span>
+      <span className="text-dark-400 font-mono">{display}</span>
+      {copied
+        ? <CheckIcon className="w-3 h-3 text-green-400 flex-shrink-0" />
+        : <ClipboardDocumentIcon className="w-3 h-3 text-dark-600 group-hover:text-dark-400 flex-shrink-0 transition-colors" />
+      }
+    </button>
+  );
+}
+
+/** Extract jobId from cron session key. Format: agent:agentId:cron:jobId or agent:agentId:cron:jobId:run:runId */
+function getCronJobIdFromKey(key) {
+  if (!key || typeof key !== "string") return null;
+  const parts = key.split(":");
+  const cronIdx = parts.indexOf("cron");
+  if (cronIdx === -1 || cronIdx + 1 >= parts.length) return null;
+  const jobId = parts[cronIdx + 1];
+  if (jobId && jobId.startsWith("heartbeat-")) return null;
+  return jobId || null;
+}
 
 /** Groups a flat message array into runs based on timestamp gaps. */
 function groupMessagesIntoRuns(messages) {
@@ -308,6 +355,16 @@ export default function SessionDetailPanel({ isOpen, onClose, session, latestRun
                             <Dialog.Title className="text-lg font-semibold text-dark-100 truncate">
                               {session?.label || "Session Details"}
                             </Dialog.Title>
+                            {(session?.id || (session?.kind === "cron" && getCronJobIdFromKey(session?.key))) && (
+                              <div className="mt-0.5 flex items-center gap-3 flex-wrap">
+                                {session?.id && (
+                                  <CopyableId label="Session" value={session.id} />
+                                )}
+                                {(session?.jobId || (session?.kind === "cron" && getCronJobIdFromKey(session?.key))) && (
+                                  <CopyableId label="Job" value={session.jobId ?? getCronJobIdFromKey(session.key)} />
+                                )}
+                              </div>
+                            )}
                             <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
                               <div className="flex items-center gap-3">
                                 {session?.agent && (

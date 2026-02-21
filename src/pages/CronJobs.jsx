@@ -405,15 +405,6 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, onJobCl
   );
 }
 
-// Mirrors the server-side slugifyJobId — used for the live preview only
-function slugifyJobId(name) {
-  return (name || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 64);
-}
-
 // Helper function to parse common cron expressions
 function parseCronExpression(expr) {
   if (!expr || typeof expr !== 'string') return null;
@@ -762,39 +753,30 @@ function CronJobModal({ isOpen, onClose, job, onSave, timezone = 'UTC' }) {
                       className="w-full px-3 py-2 bg-dark-800 border border-dark-700 rounded text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="Daily workspace review"
                     />
-                    {/* Job ID — derived preview on create, immutable display on edit */}
-                    {(() => {
-                      const displayId = job ? (job.jobId || job.id) : slugifyJobId(formData.name);
-                      if (!displayId) return null;
-                      return (
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <span className="text-xs text-dark-500 font-medium shrink-0">
-                            {job ? 'Job ID' : 'Will be assigned ID'}
-                          </span>
-                          <code className="text-xs text-dark-300 font-mono bg-dark-800 border border-dark-700 px-2 py-0.5 rounded flex-1 truncate">
-                            {displayId}
-                          </code>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(displayId);
-                              setJobIdCopied(true);
-                              setTimeout(() => setJobIdCopied(false), 1500);
-                            }}
-                            className="p-1 text-dark-500 hover:text-dark-200 transition-colors shrink-0"
-                            title="Copy job ID"
-                          >
-                            {jobIdCopied
-                              ? <span className="text-[10px] text-green-400 font-medium">Copied</span>
-                              : <ClipboardDocumentIcon className="w-3.5 h-3.5" />
-                            }
-                          </button>
-                          {!job && (
-                            <span className="text-[10px] text-dark-600 shrink-0">auto-generated</span>
-                          )}
-                        </div>
-                      );
-                    })()}
+                    {/* Job ID — displayed only when editing an existing job */}
+                    {job && (job.jobId || job.id) && (
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="text-xs text-dark-500 font-medium shrink-0">Job ID</span>
+                        <code className="text-xs text-dark-300 font-mono bg-dark-800 border border-dark-700 px-2 py-0.5 rounded flex-1 truncate">
+                          {job.jobId || job.id}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(job.jobId || job.id);
+                            setJobIdCopied(true);
+                            setTimeout(() => setJobIdCopied(false), 1500);
+                          }}
+                          className="p-1 text-dark-500 hover:text-dark-200 transition-colors shrink-0"
+                          title="Copy job ID"
+                        >
+                          {jobIdCopied
+                            ? <span className="text-[10px] text-green-400 font-medium">Copied</span>
+                            : <ClipboardDocumentIcon className="w-3.5 h-3.5" />
+                          }
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div>
