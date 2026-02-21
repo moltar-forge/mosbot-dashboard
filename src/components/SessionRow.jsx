@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { ClockIcon, CpuChipIcon, ChatBubbleLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { ClockIcon, CpuChipIcon, ChatBubbleLeftIcon } from "@heroicons/react/24/outline";
 import { stripMarkdown } from "../utils/helpers";
 import { useAgentStore } from "../stores/agentStore";
 
@@ -14,11 +13,7 @@ function getCronJobIdFromKey(key) {
   return jobId || null;
 }
 
-export default function SessionRow({ session, onClick, onDelete, statusDisplay }) {
-  const [isDeleting, setIsDeleting] = useState(false);
-  const jobId = session.jobId ?? (session.kind === "cron" ? getCronJobIdFromKey(session.key) : null);
-  const isDeletableCron = session.isDeletable ?? (session.kind === "cron" && !!jobId);
-  const canDelete = jobId && isDeletableCron;
+export default function SessionRow({ session, onClick, statusDisplay }) {
   const getAgentById = useAgentStore((state) => state.getAgentById);
   const agent = session.agent ? getAgentById(session.agent) : null;
   const getStatusColor = (status) => {
@@ -199,30 +194,6 @@ export default function SessionRow({ session, onClick, onDelete, statusDisplay }
               <span className="font-medium">{formatDuration(session.updatedAt)}</span>
             </div>
           )}
-          {canDelete && onDelete && (
-            <button
-              type="button"
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (isDeleting) return;
-                setIsDeleting(true);
-                try {
-                  await onDelete({ ...session, jobId, isDeletable: isDeletableCron });
-                } finally {
-                  setIsDeleting(false);
-                }
-              }}
-              disabled={isDeleting}
-              className="p-1.5 rounded-md text-dark-400 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Delete cron job"
-            >
-              {isDeleting ? (
-                <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <TrashIcon className="w-4 h-4" />
-              )}
-            </button>
-          )}
           <span className={`px-3 py-1.5 text-xs font-medium rounded-full border ${getStatusColor(statusDisplay ?? session.status)}`}>
             {statusDisplay ?? session.status}
           </span>
@@ -234,12 +205,9 @@ export default function SessionRow({ session, onClick, onDelete, statusDisplay }
           Heartbeat: daily total ("Today In/Out/Cost") — shares one persistent session across runs
           Main/subagent/hook: session-level aggregates ("Session In/Out/Cost") */}
       {(session.inputTokens > 0 || session.outputTokens > 0 || session.cacheReadTokens > 0 || session.messageCost > 0 || session.todayTotalCost > 0 || session.contextTokens > 0) && (() => {
-        const isHeartbeat = session.kind === 'heartbeat';
-        const isCron = session.kind === 'cron';
-        const isCumulative = session.isCumulative === true;
-        const inLabel = isCron && isCumulative ? 'Total In:' : isCron ? 'Last In:' : isHeartbeat ? 'Today In:' : 'Session In:';
-        const outLabel = isCron && isCumulative ? 'Total Out:' : isCron ? 'Last Out:' : isHeartbeat ? 'Today Out:' : 'Session Out:';
-        const costLabel = isCron && isCumulative ? 'Total Cost:' : isCron ? 'Last Cost:' : isHeartbeat ? 'Today Cost:' : 'Session Cost:';
+        const inLabel = 'In:';
+        const outLabel = 'Out:';
+        const costLabel = 'Cost:';
         const displayCost = session.messageCost ?? session.todayTotalCost ?? 0;
         return (
         <div className="flex items-center gap-3 mt-4 ml-8 flex-wrap text-xs">
@@ -314,8 +282,8 @@ export default function SessionRow({ session, onClick, onDelete, statusDisplay }
         );
       })()}
 
-      {/* Bottom row: last message preview */}
-      {session.lastMessage && (
+      {/* Bottom row: last message preview — suppress synthetic API sentinels */}
+      {session.lastMessage && session.lastMessage !== 'HEARTBEAT_OK' && (
         <div className="mt-4 ml-8 p-3 bg-dark-900/50 border border-dark-700/50 rounded">
           <div className="flex items-start gap-2">
             <ChatBubbleLeftIcon className="w-4 h-4 text-dark-600 mt-0.5 flex-shrink-0" />

@@ -393,11 +393,6 @@ export default function SessionDetailPanel({ isOpen, onClose, session, latestRun
                                 const costLbl = isCumul ? 'Total Cost:' : 'Cost:';
                                 return (session?.inputTokens > 0 || session?.outputTokens > 0 || session?.cacheReadTokens > 0 || session?.cacheWriteTokens > 0 || detailCost > 0) ? (
                                 <div className="flex items-center gap-3 text-xs">
-                                  {isGroupedSession && !isCumul && (
-                                    <span className="px-1.5 py-0.5 text-[10px] font-medium rounded border text-amber-400/80 bg-amber-500/10 border-amber-500/20 uppercase tracking-wider">
-                                      Last run
-                                    </span>
-                                  )}
                                   {(session.inputTokens > 0 || session.outputTokens > 0) && (
                                     <div className="flex items-center gap-2">
                                       <span className="text-dark-500">In:</span>

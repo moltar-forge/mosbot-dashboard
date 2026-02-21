@@ -252,7 +252,9 @@ export const getSessionMessages = async (sessionKey, { limit = 50, includeTools 
 
 // Usage & Cost Analytics API
 export const getUsageAnalytics = async (range = '7d') => {
-  const response = await api.get('/openclaw/usage', { params: { range } });
+  // Get user's timezone for accurate "today" calculation
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const response = await api.get('/openclaw/usage', { params: { range, timezone } });
   return response.data.data;
 };
 

@@ -1,6 +1,6 @@
 import SessionRow from './SessionRow';
 
-export default function SessionList({ sessions, title, emptyMessage = 'No sessions', onSessionClick, onDeleteSession, displayActiveAsIdle }) {
+export default function SessionList({ sessions, title, emptyMessage = 'No sessions', onSessionClick, displayActiveAsIdle }) {
   return (
     <div className="bg-dark-900 border border-dark-800 rounded-lg p-6">
       <h3 className="text-lg font-semibold text-dark-100 mb-5">{title}</h3>
@@ -13,7 +13,6 @@ export default function SessionList({ sessions, title, emptyMessage = 'No sessio
               key={session.id}
               session={session}
               onClick={onSessionClick}
-              onDelete={onDeleteSession}
               statusDisplay={displayActiveAsIdle && session.status === 'active' ? 'idle' : undefined}
             />
           ))}
