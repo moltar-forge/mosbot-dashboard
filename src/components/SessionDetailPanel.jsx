@@ -330,9 +330,13 @@ export default function SessionDetailPanel({ isOpen, onClose, session, latestRun
                               </div>
                               
                               {/* Usage information on the right */}
-                              {(session?.inputTokens > 0 || session?.outputTokens > 0 || session?.cacheReadTokens > 0 || session?.cacheWriteTokens > 0 || session?.messageCost > 0) && (
+                              {(() => {
+                                const detailCost = session?.messageCost ?? session?.todayTotalCost ?? 0;
+                                const isCumul = session?.isCumulative === true;
+                                const costLbl = isCumul ? 'Total Cost:' : 'Cost:';
+                                return (session?.inputTokens > 0 || session?.outputTokens > 0 || session?.cacheReadTokens > 0 || session?.cacheWriteTokens > 0 || detailCost > 0) ? (
                                 <div className="flex items-center gap-3 text-xs">
-                                  {isGroupedSession && (
+                                  {isGroupedSession && !isCumul && (
                                     <span className="px-1.5 py-0.5 text-[10px] font-medium rounded border text-amber-400/80 bg-amber-500/10 border-amber-500/20 uppercase tracking-wider">
                                       Last run
                                     </span>
@@ -366,17 +370,18 @@ export default function SessionDetailPanel({ isOpen, onClose, session, latestRun
                                       </div>
                                     </>
                                   )}
-                                  {session.messageCost > 0 && (
+                                  {detailCost > 0 && (
                                     <>
                                       {(session.inputTokens > 0 || session.outputTokens > 0 || session.cacheReadTokens > 0) && <span className="text-dark-600">•</span>}
                                       <div className="flex items-center gap-1.5">
-                                        <span className="text-dark-500">Cost:</span>
-                                        <span className="text-dark-200 font-mono font-medium">{formatCost(session.messageCost)}</span>
+                                        <span className="text-dark-500">{costLbl}</span>
+                                        <span className="text-dark-200 font-mono font-medium">{formatCost(detailCost)}</span>
                                       </div>
                                     </>
                                   )}
                                 </div>
-                              )}
+                              ) : null;
+                              })()}
                             </div>
                           </div>
                         </div>

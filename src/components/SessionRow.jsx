@@ -230,15 +230,17 @@ export default function SessionRow({ session, onClick, onDelete, statusDisplay }
       </div>
 
       {/* Middle row: token usage, cache, cost, context window */}
-      {/* Cron: per-run data ("Last In/Out/Cost")
+      {/* Cron: per-run data ("Last In/Out/Cost") — or "Total Cost" when per-run unavailable
           Heartbeat: daily total ("Today In/Out/Cost") — shares one persistent session across runs
           Main/subagent/hook: session-level aggregates ("Session In/Out/Cost") */}
-      {(session.inputTokens > 0 || session.outputTokens > 0 || session.cacheReadTokens > 0 || session.messageCost > 0 || session.contextTokens > 0) && (() => {
+      {(session.inputTokens > 0 || session.outputTokens > 0 || session.cacheReadTokens > 0 || session.messageCost > 0 || session.todayTotalCost > 0 || session.contextTokens > 0) && (() => {
         const isHeartbeat = session.kind === 'heartbeat';
         const isCron = session.kind === 'cron';
-        const inLabel = isCron ? 'Last In:' : isHeartbeat ? 'Today In:' : 'Session In:';
-        const outLabel = isCron ? 'Last Out:' : isHeartbeat ? 'Today Out:' : 'Session Out:';
-        const costLabel = isCron ? 'Last Cost:' : isHeartbeat ? 'Today Cost:' : 'Session Cost:';
+        const isCumulative = session.isCumulative === true;
+        const inLabel = isCron && isCumulative ? 'Total In:' : isCron ? 'Last In:' : isHeartbeat ? 'Today In:' : 'Session In:';
+        const outLabel = isCron && isCumulative ? 'Total Out:' : isCron ? 'Last Out:' : isHeartbeat ? 'Today Out:' : 'Session Out:';
+        const costLabel = isCron && isCumulative ? 'Total Cost:' : isCron ? 'Last Cost:' : isHeartbeat ? 'Today Cost:' : 'Session Cost:';
+        const displayCost = session.messageCost ?? session.todayTotalCost ?? 0;
         return (
         <div className="flex items-center gap-3 mt-4 ml-8 flex-wrap text-xs">
           {/* Input / Output tokens */}
@@ -275,12 +277,12 @@ export default function SessionRow({ session, onClick, onDelete, statusDisplay }
           )}
 
           {/* Cost */}
-          {session.messageCost > 0 && (
+          {displayCost > 0 && (
             <>
               {(session.inputTokens > 0 || session.outputTokens > 0 || session.cacheReadTokens > 0) && <span className="text-dark-600">•</span>}
               <div className="flex items-center gap-1.5">
                 <span className="text-dark-500">{costLabel}</span>
-                <span className="text-dark-200 font-mono font-medium">{formatCost(session.messageCost)}</span>
+                <span className="text-dark-200 font-mono font-medium">{formatCost(displayCost)}</span>
               </div>
             </>
           )}
@@ -288,7 +290,7 @@ export default function SessionRow({ session, onClick, onDelete, statusDisplay }
           {/* Context window usage — cron shows last run's context fill; others show live session context */}
           {session.contextTokens > 0 && (
             <>
-              {(session.inputTokens > 0 || session.outputTokens > 0 || session.cacheReadTokens > 0 || session.messageCost > 0) && <span className="text-dark-600">•</span>}
+              {(session.inputTokens > 0 || session.outputTokens > 0 || session.cacheReadTokens > 0 || displayCost > 0) && <span className="text-dark-600">•</span>}
               <div className="flex items-center gap-2">
                 <span className="text-dark-500">Context:</span>
                 <div className="flex items-center gap-1.5">

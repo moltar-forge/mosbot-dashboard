@@ -169,22 +169,25 @@ export default function TaskManagerOverview() {
           : (executionUnavailable ? null : (executionData.contextUsagePercent || 0)),
         inputTokens: isHeartbeat
           ? (agentSession?.inputTokens || 0)
-          : (executionUnavailable ? null : (executionData.inputTokens || 0)),
+          : (executionUnavailable ? null : (executionData.inputTokens ?? null)),
         outputTokens: isHeartbeat
           ? (agentSession?.outputTokens || 0)
-          : (executionUnavailable ? null : (executionData.outputTokens || 0)),
+          : (executionUnavailable ? null : (executionData.outputTokens ?? null)),
         cacheReadTokens: isHeartbeat
           ? (agentSession?.cacheReadTokens || 0)
-          : (executionUnavailable ? null : (executionData.cacheReadTokens || 0)),
+          : (executionUnavailable ? null : (executionData.cacheReadTokens ?? null)),
         cacheWriteTokens: isHeartbeat
           ? (agentSession?.cacheWriteTokens || 0)
-          : (executionUnavailable ? null : (executionData.cacheWriteTokens || 0)),
+          : (executionUnavailable ? null : (executionData.cacheWriteTokens ?? null)),
         messageCost: isHeartbeat
           ? (agentSession?.messageCost || 0)
-          : (executionUnavailable ? null : (executionData.messageCost || 0)),
+          : (executionUnavailable ? null : (executionData.messageCost ?? null)),
         todayTotalCost: isHeartbeat
           ? null
-          : (executionUnavailable ? null : (executionData.todayTotalCost || null)),
+          : (executionUnavailable ? null : (executionData.todayTotalCost ?? null)),
+        isCumulative: isHeartbeat
+          ? false
+          : (executionData.isCumulative || false),
         lastMessage: isHeartbeat
           ? (agentSession?.lastMessage || null)
           : (executionUnavailable 
