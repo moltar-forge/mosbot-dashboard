@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, Fragment } from 'react';
+import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import {
   PlusIcon,
@@ -96,6 +96,10 @@ function formatRelativeTime(timestamp) {
   return `${label} ago`;
 }
 
+/**
+ * Human-readable label for a model id (e.g. openrouter/moonshotai/kimi-k2.5 → Kimi K2.5).
+ * Used in dropdowns and cards; full id remains in option title for tooltip.
+ */
 function formatModel(model) {
   if (!model) return null;
   const modelPart = model.includes('/') ? model.split('/').pop() : model;
@@ -105,9 +109,10 @@ function formatModel(model) {
   if (lower.includes('sonnet-4')) return 'Sonnet 4.5';
   if (lower.includes('haiku-4')) return 'Haiku 4.5';
   if (lower.includes('gemini-2.5-flash-lite')) return 'Gemini Flash Lite';
-  if (lower.includes('gemini-2.5-flash')) return 'Gemini Flash';
+  if (lower.includes('gemini-2.5-flash')) return 'Gemini 2.5 Flash';
   if (lower.includes('gemini-2.5')) return 'Gemini 2.5';
   if (lower.includes('gpt-5')) return 'GPT-5.2';
+  if (lower.includes('deepseek-chat')) return 'DeepSeek Chat';
   if (lower.includes('deepseek')) return 'DeepSeek';
   return modelPart;
 }
@@ -426,8 +431,16 @@ function parseCronExpression(expr) {
     }
   }
 
-  // Hourly patterns
-  if (minute !== '*' && hour === '*' && dayOfMonth === '*' && month === '*' && dayOfWeek === '*') {
+  // Every X minutes (e.g. */5, */15)
+  if (minute.startsWith('*/') && hour === '*' && dayOfMonth === '*' && month === '*' && dayOfWeek === '*') {
+    const step = parseInt(minute.substring(2), 10);
+    if (!isNaN(step) && step > 0) {
+      return step === 1 ? 'Runs every minute' : `Runs every ${step} minutes`;
+    }
+  }
+
+  // Hourly patterns (fixed minute, e.g. 15 = at :15 past every hour)
+  if (minute !== '*' && !minute.startsWith('*/') && hour === '*' && dayOfMonth === '*' && month === '*' && dayOfWeek === '*') {
     const m = parseInt(minute, 10);
     if (!isNaN(m)) {
       return `Runs every hour at ${m} minutes past`;
@@ -482,6 +495,7 @@ function CronJobModal({ isOpen, onClose, job, onSave, timezone = 'UTC' }) {
   const [loadingModels, setLoadingModels] = useState(false);
   const [jobIdCopied, setJobIdCopied] = useState(false);
   const showToast = useToastStore((state) => state.showToast);
+  const defaultModelSetForCreateRef = useRef(false);
 
   // Fetch available models when modal opens (lazy load)
   useEffect(() => {
@@ -505,6 +519,20 @@ function CronJobModal({ isOpen, onClose, job, onSave, timezone = 'UTC' }) {
       });
     return () => { cancelled = true; };
   }, [isOpen]);
+
+  // Auto-select default model (e.g. Kimi K2.5) when opening create form
+  useEffect(() => {
+    if (!isOpen) {
+      defaultModelSetForCreateRef.current = false;
+      return;
+    }
+    if (job || models.length === 0 || defaultModelSetForCreateRef.current) return;
+    const defaultId = models.find((m) => m.isDefault)?.id ?? models.find((m) => /kimi-k2/i.test(m.id))?.id;
+    if (defaultId) {
+      defaultModelSetForCreateRef.current = true;
+      setFormData((prev) => ({ ...prev, model: defaultId }));
+    }
+  }, [isOpen, job, models]);
 
   useEffect(() => {
     if (job) {
@@ -921,12 +949,14 @@ function CronJobModal({ isOpen, onClose, job, onSave, timezone = 'UTC' }) {
                           <option value="">Default (use agent model)</option>
                         )}
                         {models.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name} ({m.id}){m.isDefault ? ' — default' : ''}
+                          <option key={m.id} value={m.id} title={m.id}>
+                            {formatModel(m.id)}{m.isDefault ? ' — default' : ''}
                           </option>
                         ))}
                         {formData.model && !models.some((m) => m.id === formData.model) && (
-                          <option value={formData.model}>Current: {formData.model}</option>
+                          <option value={formData.model} title={formData.model}>
+                            Current: {formatModel(formData.model)}
+                          </option>
                         )}
                       </select>
                       <p className="text-xs text-dark-500 mt-1">
