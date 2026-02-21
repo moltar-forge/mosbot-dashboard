@@ -26,7 +26,6 @@ import {
 } from "@heroicons/react/24/outline";
 import MarkdownRenderer from "./MarkdownRenderer";
 import { useTaskStore } from "../stores/taskStore";
-import { useActivityStore } from "../stores/activityStore";
 import { useAuthStore } from "../stores/authStore";
 import logger from "../utils/logger";
 import { useToastStore } from "../stores/toastStore";
@@ -41,10 +40,9 @@ import {
 import { api, getTaskSubagents } from "../api/client";
 import {
   formatDateTimeLocal,
-  parseDatabaseDate,
   classNames,
 } from "../utils/helpers";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 
 // Icon component mapping for task types
 const ICON_MAP = {
@@ -69,7 +67,6 @@ const TASK_TYPE_UNICODE_ICONS = {
 export default function TaskModal({ isOpen, onClose, task = null }) {
   const { createTask, updateTask, deleteTask, fetchTaskHistory } =
     useTaskStore();
-  const { fetchTaskActivity } = useActivityStore();
   const { user: currentUser } = useAuthStore();
   const { showToast } = useToastStore();
 
@@ -84,8 +81,8 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
-  // Comments data
-  const [comments, setComments] = useState([]);
+  // Timeline data (unified comments + task_log events)
+  const [timeline, setTimeline] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
@@ -94,11 +91,6 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
   const [editingCommentBody, setEditingCommentBody] = useState("");
   const [isUpdatingComment, setIsUpdatingComment] = useState(false);
   const [isDeletingCommentId, setIsDeletingCommentId] = useState(null);
-
-  // Activity data
-  const [activity, setActivity] = useState([]);
-  const [loadingActivity, setLoadingActivity] = useState(false);
-  const [activityLoaded, setActivityLoaded] = useState(false);
 
   // Dependencies data
   const [dependencies, setDependencies] = useState({
@@ -120,7 +112,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
   const [subagentsLoaded, setSubagentsLoaded] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState(null);
 
-  // Active tab index (0: Comments, 1: History, 2: Activity, 3: Subagents)
+  // Active tab index (0: Comments, 1: History, 2: Subagents)
   const [activeTab, setActiveTab] = useState(0);
 
   // Users list for assignee dropdown
@@ -248,16 +240,15 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
   }, []);
 
   const loadComments = async (taskId, { force = false } = {}) => {
-    // Don't reload if already loaded
     if (!force && commentsLoaded) return;
 
     setLoadingComments(true);
     try {
-      const response = await api.get(`/tasks/${taskId}/comments`);
-      setComments(response.data.data || []);
+      const response = await api.get(`/tasks/${taskId}/timeline`);
+      setTimeline(response.data.data || []);
       setCommentsLoaded(true);
     } catch (error) {
-      logger.error("Failed to load comments", error);
+      logger.error("Failed to load timeline", error);
       showToast(
         error.response?.data?.error?.message || "Failed to load comments",
         "error"
@@ -324,12 +315,11 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
 
         // Reset loaded flags when opening a new task
         setHistoryLoaded(false);
-        setActivityLoaded(false);
         setCommentsLoaded(false);
         setDependenciesLoaded(false);
         setSubtasksLoaded(false);
         setSubagentsLoaded(false);
-        setComments([]);
+        setTimeline([]);
         setCommentDraft("");
         setDependencies({ depends_on: [], dependents: [] });
         setSubtasks([]);
@@ -359,13 +349,11 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
           tags: [],
         });
         setHistory([]);
-        setActivity([]);
-        setComments([]);
+        setTimeline([]);
         setCommentDraft("");
         setDependencies({ depends_on: [], dependents: [] });
         setSubtasks([]);
         setHistoryLoaded(false);
-        setActivityLoaded(false);
         setCommentsLoaded(false);
         setDependenciesLoaded(false);
         setSubtasksLoaded(false);
@@ -388,22 +376,6 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
       logger.error("Failed to load history", error);
     } finally {
       setLoadingHistory(false);
-    }
-  };
-
-  const loadActivity = async (taskId) => {
-    // Don't reload if already loaded
-    if (activityLoaded) return;
-
-    setLoadingActivity(true);
-    try {
-      const activityData = await fetchTaskActivity(taskId);
-      setActivity(activityData);
-      setActivityLoaded(true);
-    } catch (error) {
-      logger.error("Failed to load activity", error);
-    } finally {
-      setLoadingActivity(false);
     }
   };
 
@@ -583,17 +555,12 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
     // Only load data if we have a task and are in view mode
     if (!internalTask || mode !== "view") return;
 
-    // Tab indices: 0 = Comments, 1 = History, 2 = Activity, 3 = Subagents
+    // Tab indices: 0 = Comments, 1 = History, 2 = Subagents
     if (index === 0 && !commentsLoaded) {
       loadComments(internalTask.id);
     } else if (index === 1 && !historyLoaded) {
-      // History tab clicked - load history
       loadHistory(internalTask.id);
-    } else if (index === 2 && !activityLoaded) {
-      // Activity tab clicked - load activity
-      loadActivity(internalTask.id);
-    } else if (index === 3 && !subagentsLoaded) {
-      // Subagents tab clicked - load subagents
+    } else if (index === 2 && !subagentsLoaded) {
       loadSubagents(internalTask.id);
     }
   };
@@ -618,9 +585,9 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
       const response = await api.post(`/tasks/${internalTask.id}/comments`, {
         body,
       });
-      const newComment = response.data.data;
+      const newComment = { ...response.data.data, type: 'comment' };
 
-      setComments((prev) => [...prev, newComment]);
+      setTimeline((prev) => [...prev, newComment]);
       setCommentDraft("");
       setCommentsLoaded(true);
       showToast("Comment added", "success");
@@ -665,10 +632,10 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
         `/tasks/${internalTask.id}/comments/${commentId}`,
         { body }
       );
-      const updatedComment = response.data.data;
+      const updatedComment = { ...response.data.data, type: 'comment' };
 
-      setComments((prev) =>
-        prev.map((c) => (c.id === commentId ? updatedComment : c))
+      setTimeline((prev) =>
+        prev.map((item) => (item.type === 'comment' && item.id === commentId ? updatedComment : item))
       );
       setEditingCommentId(null);
       setEditingCommentBody("");
@@ -694,7 +661,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
     setIsDeletingCommentId(commentId);
     try {
       await api.delete(`/tasks/${internalTask.id}/comments/${commentId}`);
-      setComments((prev) => prev.filter((c) => c.id !== commentId));
+      setTimeline((prev) => prev.filter((item) => !(item.type === 'comment' && item.id === commentId)));
       showToast("Comment deleted", "success");
     } catch (error) {
       logger.error("Failed to delete comment", error);
@@ -1193,6 +1160,35 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
         return "Comment deleted";
       default:
         return eventType;
+    }
+  };
+
+  // Builds a short human-readable sentence for a task_log event shown in the timeline
+  const getEventNarrative = (entry) => {
+    const actor = entry.actor_name || "System";
+    const newVals = entry.new_values || {};
+    const oldVals = entry.old_values || {};
+
+    switch (entry.event_type) {
+      case "CREATED":
+        return `Task created by ${actor}`;
+      case "STATUS_CHANGED": {
+        const from = oldVals.status || "—";
+        const to = newVals.status || "—";
+        return `Status changed from ${from} to ${to} by ${actor}`;
+      }
+      case "UPDATED":
+        return `Task updated by ${actor}`;
+      case "ARCHIVED_AUTO":
+        return "Task archived automatically";
+      case "ARCHIVED_MANUAL":
+        return `Task archived by ${actor}`;
+      case "RESTORED":
+        return `Task restored by ${actor}`;
+      case "DELETED":
+        return `Task deleted by ${actor}`;
+      default:
+        return `${getEventLabel(entry.event_type, entry.meta)} by ${actor}`;
     }
   };
 
@@ -1822,19 +1818,6 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                           }`
                           }
                         >
-                          <BoltIcon className="w-4 h-4" />
-                          Activity
-                        </Tab>
-                        <Tab
-                          className={({ selected }) =>
-                            `pb-3 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-2
-                          ${
-                            selected
-                              ? "border-primary-500 text-primary-400"
-                              : "border-transparent text-dark-400 hover:text-dark-200 hover:border-dark-600"
-                          }`
-                          }
-                        >
                           <CpuChipIcon className="w-4 h-4" />
                           Subagents
                         </Tab>
@@ -1895,61 +1878,75 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                   </div>
                                 </div>
 
-                                {/* List */}
+                                {/* Timeline: comments + task_log events */}
                                 {loadingComments ? (
                                   <div className="flex items-center justify-center py-10">
                                     <div className="inline-block w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
                                   </div>
-                                ) : comments.length === 0 ? (
+                                ) : timeline.filter((i) => i.type === 'comment').length === 0 ? (
                                   <div className="text-center py-10">
                                     <p className="text-dark-400">
                                       No comments yet
                                     </p>
                                   </div>
                                 ) : (
-                                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                                    {comments.map((comment) => {
-                                      const isAuthor =
-                                        currentUser?.id === comment.author_id;
+                                  <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                                    {timeline.map((item) => {
+                                      if (item.type === 'event') {
+                                        return (
+                                          <div
+                                            key={`event-${item.id}`}
+                                            className="flex items-center gap-2 py-1 px-2"
+                                          >
+                                            <div className={classNames(
+                                              "flex-shrink-0 w-6 h-6 rounded flex items-center justify-center border",
+                                              getEventColor(item.event_type, item.meta)
+                                            )}>
+                                              {getEventIcon(item.event_type, item.meta)}
+                                            </div>
+                                            <p className="text-xs text-dark-400 flex-1">
+                                              {getEventNarrative(item)}
+                                            </p>
+                                            <time className="text-xs text-dark-600 whitespace-nowrap shrink-0">
+                                              {item.occurred_at ? formatDateTimeLocal(item.occurred_at) : ""}
+                                            </time>
+                                          </div>
+                                        );
+                                      }
+
+                                      const isAuthor = currentUser?.id === item.author_id;
                                       const isAdminOrOwner =
                                         currentUser?.role === "admin" ||
                                         currentUser?.role === "agent" ||
                                         currentUser?.role === "owner";
-                                      const canEdit =
-                                        isAuthor || isAdminOrOwner;
-                                      const isEditing =
-                                        editingCommentId === comment.id;
+                                      const canEdit = isAuthor || isAdminOrOwner;
+                                      const isEditing = editingCommentId === item.id;
 
                                       return (
                                         <div
-                                          key={comment.id}
+                                          key={`comment-${item.id}`}
                                           className="p-4 bg-dark-800/50 rounded-lg border border-dark-700/50 hover:border-dark-600/50 transition-colors"
                                         >
                                           <div className="flex items-start justify-between gap-3 mb-2">
                                             <div className="min-w-0 flex-1">
                                               <p className="text-sm font-semibold text-dark-100 truncate">
-                                                {comment.author_name ||
-                                                  "Unknown"}
+                                                {item.author_name || "Unknown"}
                                               </p>
                                               <p className="text-xs text-dark-500">
-                                                {comment.author_email || "—"}
+                                                {item.author_email || "—"}
                                               </p>
                                             </div>
                                             <div className="flex items-center gap-2">
                                               <time className="text-xs text-dark-500 whitespace-nowrap">
-                                                {comment.created_at
-                                                  ? formatDateTimeLocal(
-                                                      comment.created_at
-                                                    )
+                                                {item.created_at
+                                                  ? formatDateTimeLocal(item.created_at)
                                                   : ""}
                                               </time>
                                               {canEdit && !isEditing && (
                                                 <div className="flex items-center gap-1">
                                                   <button
                                                     type="button"
-                                                    onClick={() =>
-                                                      handleEditComment(comment)
-                                                    }
+                                                    onClick={() => handleEditComment(item)}
                                                     className="p-1 text-dark-400 hover:text-primary-400 transition-colors"
                                                     title="Edit comment"
                                                   >
@@ -1957,20 +1954,12 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                                   </button>
                                                   <button
                                                     type="button"
-                                                    onClick={() =>
-                                                      handleDeleteComment(
-                                                        comment.id
-                                                      )
-                                                    }
-                                                    disabled={
-                                                      isDeletingCommentId ===
-                                                      comment.id
-                                                    }
+                                                    onClick={() => handleDeleteComment(item.id)}
+                                                    disabled={isDeletingCommentId === item.id}
                                                     className="p-1 text-dark-400 hover:text-red-400 transition-colors disabled:opacity-50"
                                                     title="Delete comment"
                                                   >
-                                                    {isDeletingCommentId ===
-                                                    comment.id ? (
+                                                    {isDeletingCommentId === item.id ? (
                                                       <ArrowPathIcon className="w-4 h-4 animate-spin" />
                                                     ) : (
                                                       <TrashIcon className="w-4 h-4" />
@@ -1986,20 +1975,14 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                               <textarea
                                                 value={editingCommentBody}
                                                 onChange={(e) =>
-                                                  setEditingCommentBody(
-                                                    e.target.value
-                                                  )
+                                                  setEditingCommentBody(e.target.value)
                                                 }
                                                 rows={3}
                                                 className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-sm text-dark-100 placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
                                               />
                                               <div className="flex items-center justify-between gap-3">
                                                 <p className="text-xs text-dark-500">
-                                                  {
-                                                    editingCommentBody.trim()
-                                                      .length
-                                                  }
-                                                  /5000
+                                                  {editingCommentBody.trim().length}/5000
                                                 </p>
                                                 <div className="flex items-center gap-2">
                                                   <button
@@ -2012,11 +1995,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                                   </button>
                                                   <button
                                                     type="button"
-                                                    onClick={() =>
-                                                      handleUpdateComment(
-                                                        comment.id
-                                                      )
-                                                    }
+                                                    onClick={() => handleUpdateComment(item.id)}
                                                     disabled={isUpdatingComment}
                                                     className={classNames(
                                                       "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
@@ -2042,7 +2021,7 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                             </div>
                                           ) : (
                                             <MarkdownRenderer
-                                              content={comment.body}
+                                              content={item.body}
                                               size="sm"
                                             />
                                           )}
@@ -2240,83 +2219,6 @@ export default function TaskModal({ isOpen, onClose, task = null }) {
                                   </div>
                                 </div>
                               ))}
-                            </div>
-                          )}
-                        </Tab.Panel>
-
-                        {/* Activity Panel */}
-                        <Tab.Panel>
-                          {loadingActivity ? (
-                            <div className="flex items-center justify-center py-12">
-                              <div className="inline-block w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
-                            </div>
-                          ) : activity.length === 0 ? (
-                            <div className="text-center py-12">
-                              <p className="text-dark-400">
-                                No bot activity for this task yet
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                              {activity.map((entry) => {
-                                const date = parseDatabaseDate(entry.timestamp);
-                                const timeLabel = format(date, "MMM d, h:mm a");
-
-                                const categoryColors = {
-                                  heartbeat:
-                                    "bg-yellow-500/20 border-yellow-500/50 text-yellow-400",
-                                  implementation:
-                                    "bg-blue-500/20 border-blue-500/50 text-blue-400",
-                                  improvement:
-                                    "bg-green-500/20 border-green-500/50 text-green-400",
-                                  bug_fix:
-                                    "bg-red-500/20 border-red-500/50 text-red-400",
-                                  refactor:
-                                    "bg-purple-500/20 border-purple-500/50 text-purple-400",
-                                  feature:
-                                    "bg-green-500/20 border-green-500/50 text-green-400",
-                                  planning:
-                                    "bg-purple-500/20 border-purple-500/50 text-purple-400",
-                                  deployment:
-                                    "bg-yellow-500/20 border-yellow-500/50 text-yellow-400",
-                                  testing:
-                                    "bg-blue-500/20 border-blue-500/50 text-blue-400",
-                                  maintenance:
-                                    "bg-green-500/20 border-green-500/50 text-green-400",
-                                };
-
-                                const categoryColor =
-                                  categoryColors[entry.category] ||
-                                  "bg-primary-500/20 border-primary-500/50 text-primary-400";
-
-                                return (
-                                  <div
-                                    key={entry.id}
-                                    className="p-4 bg-dark-800/50 rounded-lg border border-dark-700/50 hover:border-dark-600/50 transition-colors"
-                                  >
-                                    <div className="flex items-start justify-between gap-3 mb-2">
-                                      <h4 className="font-semibold text-dark-100 text-sm">
-                                        {entry.title}
-                                      </h4>
-                                      {entry.category && (
-                                        <span
-                                          className={`px-2 py-0.5 rounded text-xs font-medium border shrink-0 ${categoryColor}`}
-                                        >
-                                          {entry.category.replace("_", " ")}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <MarkdownRenderer
-                                      content={entry.description}
-                                      size="xs"
-                                      className="text-dark-400 mb-3"
-                                    />
-                                    <time className="text-xs text-dark-500">
-                                      {timeLabel}
-                                    </time>
-                                  </div>
-                                );
-                              })}
                             </div>
                           )}
                         </Tab.Panel>

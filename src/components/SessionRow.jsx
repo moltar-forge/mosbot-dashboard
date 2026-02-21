@@ -137,19 +137,35 @@ export default function SessionRow({ session, onClick, onDelete, statusDisplay }
                 </span>
               )}
               {(session.kind === 'main' || session.kind === 'heartbeat' || session.kind === 'cron' || session.kind === 'subagent' || session.kind === 'hook') && (() => {
-                // Prefer explicit sessionMode from API; fall back to kind-based inference
-                const isIsolated = session.sessionMode === 'isolated'
-                  || (session.sessionMode == null && session.kind !== 'main' && session.kind !== 'heartbeat');
+                // MAIN      — agent's primary persistent session
+                // DEDICATED — heartbeat's own persistent session, separate from main
+                // ISOLATED  — fresh context per run (cron, subagent, hook)
+                if (session.kind === 'main') {
+                  return (
+                    <span
+                      className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded border flex-shrink-0 text-sky-400 bg-sky-500/10 border-sky-500/20"
+                      title="The agent's primary persistent session. Context accumulates across all interactions."
+                    >
+                      AGENT
+                    </span>
+                  );
+                }
+                if (session.kind === 'heartbeat') {
+                  return (
+                    <span
+                      className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded border flex-shrink-0 text-pink-400/80 bg-pink-500/10 border-pink-500/20"
+                      title="Runs in its own dedicated session, separate from the main session. Context accumulates across heartbeat runs."
+                    >
+                      DEDICATED
+                    </span>
+                  );
+                }
                 return (
                   <span
-                    className={`px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded border flex-shrink-0 ${
-                      isIsolated
-                        ? 'text-amber-400/80 bg-amber-500/10 border-amber-500/20'
-                        : 'text-dark-400 bg-dark-700/50 border-dark-600/30'
-                    }`}
-                    title={isIsolated ? 'Runs in a fresh isolated context' : "Runs in the agent's persistent shared context"}
+                    className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded border flex-shrink-0 text-amber-400/80 bg-amber-500/10 border-amber-500/20"
+                    title="Each run starts in a fresh isolated context. No history is carried over between runs."
                   >
-                    {isIsolated ? 'ISOLATED' : 'SHARED'}
+                    ISOLATED
                   </span>
                 );
               })()}
@@ -214,13 +230,15 @@ export default function SessionRow({ session, onClick, onDelete, statusDisplay }
       </div>
 
       {/* Middle row: token usage, cache, cost, context window */}
-      {/* Cron jobs have per-run data ("Last"); all other sessions (main, group,
-          heartbeat, subagent) show session-level aggregates ("Session"). */}
+      {/* Cron: per-run data ("Last In/Out/Cost")
+          Heartbeat: daily total ("Today In/Out/Cost") — shares one persistent session across runs
+          Main/subagent/hook: session-level aggregates ("Session In/Out/Cost") */}
       {(session.inputTokens > 0 || session.outputTokens > 0 || session.cacheReadTokens > 0 || session.messageCost > 0 || session.contextTokens > 0) && (() => {
-        const isPerRun = session.kind === 'cron';
-        const inLabel = isPerRun ? 'Last In:' : 'Session In:';
-        const outLabel = isPerRun ? 'Last Out:' : 'Session Out:';
-        const costLabel = isPerRun ? 'Last Cost:' : 'Session Cost:';
+        const isHeartbeat = session.kind === 'heartbeat';
+        const isCron = session.kind === 'cron';
+        const inLabel = isCron ? 'Last In:' : isHeartbeat ? 'Today In:' : 'Session In:';
+        const outLabel = isCron ? 'Last Out:' : isHeartbeat ? 'Today Out:' : 'Session Out:';
+        const costLabel = isCron ? 'Last Cost:' : isHeartbeat ? 'Today Cost:' : 'Session Cost:';
         return (
         <div className="flex items-center gap-3 mt-4 ml-8 flex-wrap text-xs">
           {/* Input / Output tokens */}

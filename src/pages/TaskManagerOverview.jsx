@@ -6,6 +6,7 @@ import {
   CircleStackIcon,
   UserGroupIcon,
   XMarkIcon,
+  FunnelIcon,
 } from '@heroicons/react/24/outline';
 import Header from '../components/Header';
 import StatCard from '../components/StatCard';
@@ -21,7 +22,7 @@ import { classNames, formatTokens } from '../utils/helpers';
 import { useToastStore } from '../stores/toastStore';
 
 const SESSION_TYPES = [
-  { id: 'main', label: 'Main' },
+  { id: 'main', label: 'Agent' },
   { id: 'subagent', label: 'Subagent' },
   { id: 'cron', label: 'Cron' },
   { id: 'heartbeat', label: 'Heartbeat' },
@@ -136,7 +137,9 @@ export default function TaskManagerOverview() {
         jobId: job.jobId || job.id || null,
         isDeletable: !isHeartbeat,
         key: sessionKey,
-        label: job.name,
+        // For cron sessions, prefer the session's own displayName so the label matches
+        // what Live Sessions shows for the same run. Fall back to the job name.
+        label: (!isHeartbeat && executionData.sessionLabel) ? executionData.sessionLabel : job.name,
         status,
         kind: isHeartbeat ? 'heartbeat' : 'cron',
         updatedAt: job.lastRunAt ? new Date(job.lastRunAt).getTime() : null,
@@ -253,8 +256,7 @@ export default function TaskManagerOverview() {
     const typeMatch = filterTypes.length === 0 || filterTypes.includes(sessionKind);
     const agentMatch =
       filterAgents.length === 0 ||
-      (sessionAgent && filterAgents.includes(sessionAgent)) ||
-      (sessionAgent === 'main' && filterAgents.includes('main'));
+      (sessionAgent && filterAgents.includes(sessionAgent));
     return typeMatch && agentMatch;
   }, [filterTypes, filterAgents]);
 
@@ -333,7 +335,7 @@ export default function TaskManagerOverview() {
       <div className="flex-1 p-3 md:p-6 overflow-auto">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <StatCard 
               label="Running Sessions"
               value={runningCount}
@@ -378,94 +380,85 @@ export default function TaskManagerOverview() {
             />
           </div>
 
-          {/* Inline filter bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 py-1">
-            {/* Type pills */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-medium text-dark-500 uppercase tracking-wider flex-shrink-0">Type</span>
-              {SESSION_TYPES.map(({ id, label }) => {
-                const isSelected = filterTypes.includes(id);
-                return (
+          {/* Filter bar */}
+          <div className="rounded-lg border border-dark-700 bg-dark-800/50 px-4 py-3">
+            <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2">
+              <div className="flex items-center gap-2">
+                <FunnelIcon className="w-4 h-4 text-dark-500 flex-shrink-0" aria-hidden />
+                <span className="text-xs font-semibold text-dark-400 uppercase tracking-wider">Filters</span>
+              </div>
+
+              {/* Session kind pills */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-medium text-dark-500 flex-shrink-0">Kind</span>
+                {SESSION_TYPES.map(({ id, label }) => {
+                  const isSelected = filterTypes.includes(id);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() =>
+                        setFilterTypes((prev) =>
+                          isSelected ? prev.filter((t) => t !== id) : [...prev, id]
+                        )
+                      }
+                      className={classNames(
+                        "px-2.5 py-1 text-xs font-medium rounded-full border transition-colors",
+                        isSelected
+                          ? "bg-primary-600 text-white border-primary-500"
+                          : "bg-dark-700 text-dark-300 border-dark-600 hover:bg-dark-600 hover:text-dark-100 hover:border-dark-500"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="hidden sm:block w-px h-6 bg-dark-600 flex-shrink-0" aria-hidden />
+
+              {/* Agent pills */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-medium text-dark-500 flex-shrink-0">Agent</span>
+                {agents.map((agent) => {
+                  const isSelected = filterAgents.includes(agent.id);
+                  return (
+                    <button
+                      key={agent.id}
+                      type="button"
+                      onClick={() =>
+                        setFilterAgents((prev) =>
+                          isSelected ? prev.filter((a) => a !== agent.id) : [...prev, agent.id]
+                        )
+                      }
+                      className={classNames(
+                        "px-2.5 py-1 text-xs font-medium rounded-full border transition-colors",
+                        isSelected
+                          ? "bg-primary-600 text-white border-primary-500"
+                          : "bg-dark-700 text-dark-300 border-dark-600 hover:bg-dark-600 hover:text-dark-100 hover:border-dark-500"
+                      )}
+                    >
+                      {agent.name || agent.id}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Clear — only visible when filters are active */}
+              {(filterTypes.length > 0 || filterAgents.length > 0) && (
+                <>
+                  <div className="hidden sm:block w-px h-6 bg-dark-600 flex-shrink-0" aria-hidden />
                   <button
-                    key={id}
                     type="button"
-                    onClick={() =>
-                      setFilterTypes((prev) =>
-                        isSelected ? prev.filter((t) => t !== id) : [...prev, id]
-                      )
-                    }
-                    className={classNames(
-                      "px-2.5 py-1 text-xs font-medium rounded-full border transition-colors",
-                      isSelected
-                        ? "bg-primary-500/20 text-primary-400 border-primary-500/40"
-                        : "bg-dark-800 text-dark-400 border-dark-700 hover:border-dark-600 hover:text-dark-200"
-                    )}
+                    onClick={() => { setFilterTypes([]); setFilterAgents([]); }}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-dark-400 hover:text-dark-200 transition-colors rounded-lg hover:bg-dark-700"
                   >
-                    {label}
+                    <XMarkIcon className="w-4 h-4" />
+                    Clear filters
                   </button>
-                );
-              })}
+                </>
+              )}
             </div>
-
-            <div className="hidden sm:block w-px h-5 bg-dark-700 flex-shrink-0" />
-
-            {/* Agent pills */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-medium text-dark-500 uppercase tracking-wider flex-shrink-0">Agent</span>
-              <button
-                type="button"
-                onClick={() =>
-                  setFilterAgents((prev) =>
-                    prev.includes("main") ? prev.filter((a) => a !== "main") : [...prev, "main"]
-                  )
-                }
-                className={classNames(
-                  "px-2.5 py-1 text-xs font-medium rounded-full border transition-colors",
-                  filterAgents.includes("main")
-                    ? "bg-primary-500/20 text-primary-400 border-primary-500/40"
-                    : "bg-dark-800 text-dark-400 border-dark-700 hover:border-dark-600 hover:text-dark-200"
-                )}
-              >
-                Main
-              </button>
-              {agents.map((agent) => {
-                const isSelected = filterAgents.includes(agent.id);
-                return (
-                  <button
-                    key={agent.id}
-                    type="button"
-                    onClick={() =>
-                      setFilterAgents((prev) =>
-                        isSelected ? prev.filter((a) => a !== agent.id) : [...prev, agent.id]
-                      )
-                    }
-                    className={classNames(
-                      "px-2.5 py-1 text-xs font-medium rounded-full border transition-colors",
-                      isSelected
-                        ? "bg-primary-500/20 text-primary-400 border-primary-500/40"
-                        : "bg-dark-800 text-dark-400 border-dark-700 hover:border-dark-600 hover:text-dark-200"
-                    )}
-                  >
-                    {agent.icon ? `${agent.icon} ` : ""}{agent.name || agent.id}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Clear — only visible when active */}
-            {(filterTypes.length > 0 || filterAgents.length > 0) && (
-              <>
-                <div className="hidden sm:block w-px h-5 bg-dark-700 flex-shrink-0" />
-                <button
-                  type="button"
-                  onClick={() => { setFilterTypes([]); setFilterAgents([]); }}
-                  className="flex items-center gap-1 text-xs text-dark-500 hover:text-dark-200 transition-colors flex-shrink-0"
-                >
-                  <XMarkIcon className="w-3.5 h-3.5" />
-                  Clear
-                </button>
-              </>
-            )}
           </div>
 
           {/* Tab bar */}
