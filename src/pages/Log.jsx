@@ -52,9 +52,11 @@ const getCategoryColor = (category) => {
 };
 
 function formatCost(cost) {
-  if (!cost || cost === 0) return null;
-  if (cost < 0.001) return '<$0.001';
-  return `$${cost.toFixed(3)}`;
+  if (cost == null || cost === '') return null;
+  const n = Number(cost);
+  if (Number.isNaN(n) || n === 0) return null;
+  if (n < 0.001) return '<$0.001';
+  return `$${n.toFixed(3)}`;
 }
 
 function CronEntry({ log }) {

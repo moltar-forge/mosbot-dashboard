@@ -29,16 +29,39 @@ vi.mock('../utils/helpers', () => ({
   }),
 }));
 
+const defaultActivityStoreMock = () => ({
+  logs: [],
+  isLoading: false,
+  fetchActivity: vi.fn(),
+  filters: {
+    startDate: null,
+    endDate: null,
+    category: null,
+    agentId: null,
+    source: 'all',
+  },
+  setFilters: vi.fn(),
+  resetFilters: vi.fn(),
+  liveSessions: [],
+  isLoadingSessions: false,
+  fetchLiveSessions: vi.fn(),
+});
+
 describe('Log', () => {
   const mockFetchActivity = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetchActivity.mockResolvedValue([]);
+    useActivityStore.mockReturnValue({
+      ...defaultActivityStoreMock(),
+      fetchActivity: mockFetchActivity,
+    });
   });
 
   it('renders the activity log page', () => {
     useActivityStore.mockReturnValue({
+      ...defaultActivityStoreMock(),
       logs: [],
       isLoading: false,
       fetchActivity: mockFetchActivity,
@@ -55,6 +78,7 @@ describe('Log', () => {
 
   it('displays loading state when isLoading is true', () => {
     useActivityStore.mockReturnValue({
+      ...defaultActivityStoreMock(),
       logs: [],
       isLoading: true,
       fetchActivity: mockFetchActivity,
@@ -71,6 +95,7 @@ describe('Log', () => {
 
   it('displays empty state when no logs are available', () => {
     useActivityStore.mockReturnValue({
+      ...defaultActivityStoreMock(),
       logs: [],
       isLoading: false,
       fetchActivity: mockFetchActivity,
@@ -83,7 +108,7 @@ describe('Log', () => {
     );
 
     expect(screen.getByText('No Activity Yet')).toBeInTheDocument();
-    expect(screen.getByText('Bot activity will appear here as it works')).toBeInTheDocument();
+    expect(screen.getByText('Agent activity will appear here as it works')).toBeInTheDocument();
   });
 
   it('displays activity logs grouped by day', async () => {
@@ -109,6 +134,7 @@ describe('Log', () => {
     ];
 
     useActivityStore.mockReturnValue({
+      ...defaultActivityStoreMock(),
       logs: mockLogs,
       isLoading: false,
       fetchActivity: mockFetchActivity,
@@ -142,6 +168,7 @@ describe('Log', () => {
     ];
 
     useActivityStore.mockReturnValue({
+      ...defaultActivityStoreMock(),
       logs: mockLogs,
       isLoading: false,
       fetchActivity: mockFetchActivity,
@@ -174,6 +201,7 @@ describe('Log', () => {
     ];
 
     useActivityStore.mockReturnValue({
+      ...defaultActivityStoreMock(),
       logs: mockLogs,
       isLoading: false,
       fetchActivity: mockFetchActivity,
@@ -211,6 +239,7 @@ describe('Log', () => {
     ];
 
     useActivityStore.mockReturnValue({
+      ...defaultActivityStoreMock(),
       logs: mockLogs,
       isLoading: false,
       fetchActivity: mockFetchActivity,
@@ -227,6 +256,7 @@ describe('Log', () => {
 
   it('calls fetchActivity on mount', () => {
     useActivityStore.mockReturnValue({
+      ...defaultActivityStoreMock(),
       logs: [],
       isLoading: false,
       fetchActivity: mockFetchActivity,
@@ -246,6 +276,7 @@ describe('Log', () => {
     mockFetchActivity.mockRejectedValue(new Error('Failed to fetch'));
 
     useActivityStore.mockReturnValue({
+      ...defaultActivityStoreMock(),
       logs: [],
       isLoading: false,
       fetchActivity: mockFetchActivity,

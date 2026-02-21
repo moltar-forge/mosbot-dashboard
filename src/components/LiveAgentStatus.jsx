@@ -63,7 +63,7 @@ export default function LiveAgentStatus() {
   }, [fetchLiveSessions]);
 
   // Only show agents that are running or active (updated within 30 min)
-  const visible = liveSessions.filter(
+  const visible = (liveSessions ?? []).filter(
     (s) => s.status === 'running' || s.status === 'active'
   );
 

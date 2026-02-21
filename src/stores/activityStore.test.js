@@ -40,7 +40,7 @@ describe('activityStore', () => {
 
       const result = await useActivityStore.getState().fetchActivity();
 
-      expect(api.get).toHaveBeenCalledWith('/activity', { params: { limit: 50 } });
+      expect(api.get).toHaveBeenCalledWith('/activity/feed', { params: { limit: 50, offset: 0 } });
       expect(result).toEqual(mockLogs);
       expect(useActivityStore.getState().logs).toEqual(mockLogs);
       expect(useActivityStore.getState().isLoading).toBe(false);
@@ -60,19 +60,17 @@ describe('activityStore', () => {
         limit: 50,
         offset: 10,
         category: 'task',
-        taskId: 1,
         startDate: '2024-01-01',
         endDate: '2024-01-31',
       };
 
       await useActivityStore.getState().fetchActivity(params);
 
-      expect(api.get).toHaveBeenCalledWith('/activity', {
+      expect(api.get).toHaveBeenCalledWith('/activity/feed', {
         params: {
           limit: 50,
           offset: 10,
           category: 'task',
-          task_id: 1,
           start_date: '2024-01-01',
           end_date: '2024-01-31',
         },
@@ -289,7 +287,7 @@ describe('activityStore', () => {
 
       const result = await useActivityStore.getState().loadMoreActivity();
 
-      expect(api.get).toHaveBeenCalledWith('/activity', {
+      expect(api.get).toHaveBeenCalledWith('/activity/feed', {
         params: { limit: 50, offset: 50 },
       });
       expect(result).toEqual(newLogs);
