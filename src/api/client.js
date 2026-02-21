@@ -250,6 +250,12 @@ export const getSessionMessages = async (sessionKey, { limit = 50, includeTools 
   return response.data.data;
 };
 
+// Usage & Cost Analytics API
+export const getUsageAnalytics = async (range = '7d') => {
+  const response = await api.get('/openclaw/usage', { params: { range } });
+  return response.data.data;
+};
+
 // Standups API
 export const getStandups = async ({ limit = 50, offset = 0 } = {}) => {
   const response = await api.get('/standups', {

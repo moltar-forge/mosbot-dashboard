@@ -20,6 +20,7 @@ import Settings from './pages/Settings';
 import ModelFleetSettings from './pages/ModelFleetSettings';
 import TaskView from './pages/TaskView';
 import Standup from './pages/Standup';
+import UsageAnalytics from './pages/UsageAnalytics';
 import { useAuthStore } from './stores/authStore';
 import { useAgentStore } from './stores/agentStore';
 
@@ -71,6 +72,7 @@ function App() {
             <Route path="/scheduler" element={<Layout><CronJobs /></Layout>} />
             <Route path="/cron-jobs" element={<Navigate to="/scheduler" replace />} />
             <Route path="/standups" element={<Layout><Standup /></Layout>} />
+            <Route path="/usage" element={<Layout><UsageAnalytics /></Layout>} />
             <Route path="/log" element={<Layout><Log /></Layout>} />
             <Route path="/archived" element={<Layout><Archived /></Layout>} />
             <Route path="/settings" element={<Layout><Settings /></Layout>} />

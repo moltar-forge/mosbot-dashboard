@@ -19,6 +19,7 @@ import {
   CubeIcon,
   MegaphoneIcon,
   SparklesIcon,
+  CurrencyDollarIcon,
 } from '@heroicons/react/24/outline';
 import { classNames } from '../utils/helpers';
 import { useAuthStore } from '../stores/authStore';
@@ -79,6 +80,7 @@ export default function Sidebar({ onCloseMobile }) {
       label: 'Ops',
       items: [
         { name: 'Scheduler', href: '/scheduler', icon: CalendarDaysIcon },
+        { name: 'Usage & Cost', href: '/usage', icon: CurrencyDollarIcon },
         { name: 'Log', href: '/log', icon: ClipboardDocumentListIcon },
       ],
     },
