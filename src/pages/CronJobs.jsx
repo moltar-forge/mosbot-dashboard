@@ -98,6 +98,13 @@ function formatRelativeTime(timestamp) {
   return isFuture ? `${label} from now` : `${label} ago`;
 }
 
+/** True if timestamp would display as "now" (next) or "just now" (last) — within 1 minute. */
+function isWithinJustNowWindow(timestamp) {
+  if (!timestamp) return false;
+  const diffMs = new Date() - new Date(timestamp);
+  return Math.abs(diffMs) < 60000;
+}
+
 /**
  * Human-readable label for a model id (e.g. openrouter/moonshotai/kimi-k2.5 → Kimi K2.5).
  * Used in dropdowns and cards; full id remains in option title for tooltip.
@@ -206,6 +213,8 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, onJobCl
     }
   };
 
+  const runNowDisabled = isWithinJustNowWindow(nextRunAtMs) || isWithinJustNowWindow(lastRunAtMs);
+
   return (
     <div 
       className="group p-4 bg-dark-800 border border-dark-700 rounded-lg hover:border-dark-600 transition-colors cursor-pointer"
@@ -251,15 +260,17 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, onJobCl
                 className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 md:opacity-100 transition-opacity"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Run Now button - only for enabled jobs */}
-                {job.enabled !== false && (
+                {/* Run Now button - only for cron jobs (heartbeats are not replayable); disabled when next/last is "just now" */}
+                {job.enabled !== false && !isHeartbeat && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (runNowDisabled) return;
                       onTrigger(job);
                     }}
-                    className="p-1.5 text-dark-400 hover:text-green-400 hover:bg-dark-700 rounded transition-colors"
-                    title="Run now"
+                    disabled={runNowDisabled}
+                    className="p-1.5 text-dark-400 hover:text-green-400 hover:bg-dark-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-dark-400 disabled:hover:bg-transparent"
+                    title={runNowDisabled ? 'Run now (unavailable when next or last is just now)' : 'Run now'}
                   >
                     <PlayIcon className="w-4 h-4" />
                   </button>
