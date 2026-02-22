@@ -1,16 +1,19 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import {
   CurrencyDollarIcon,
   ArrowPathIcon,
   ExclamationCircleIcon,
   CircleStackIcon,
   UserGroupIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import Header from '../components/Header';
 import StatCard from '../components/StatCard';
 import CostChart from '../components/CostChart';
+import ResetConfirmationModal from '../components/ResetConfirmationModal';
 import { useUsageStore, VALID_RANGES } from '../stores/usageStore';
 import { useToastStore } from '../stores/toastStore';
+import { resetUsageData } from '../api/client';
 import logger from '../utils/logger';
 import { formatTokens } from '../utils/helpers';
 
@@ -161,6 +164,7 @@ function JobTable({ rows }) {
 
 export default function UsageAnalytics() {
   const { data, isLoading, error, range, fetchUsage, setRange } = useUsageStore();
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const showToast = useToastStore((state) => state.showToast);
 
   useEffect(() => {
@@ -177,6 +181,12 @@ export default function UsageAnalytics() {
     }
   }, [fetchUsage, range, showToast]);
 
+  const handleReset = async (password) => {
+    await resetUsageData(password);
+    // Refresh the usage data after reset
+    await fetchUsage(range);
+  };
+
   const summary = data?.summary;
   const timeSeries = data?.timeSeries || [];
   const byAgent = data?.byAgent || [];
@@ -184,13 +194,26 @@ export default function UsageAnalytics() {
   const byJob = data?.byJob || [];
   const groupBy = data?.groupBy || 'hour';
 
+  const hasData = data && (data.timeSeries?.length > 0 || data.byAgent?.length > 0 || data.byModel?.length > 0);
+
   return (
     <div className="flex flex-col h-full">
       <Header
         title="Usage & Cost"
         subtitle="Token consumption and cost breakdown across agents and models"
         onRefresh={handleRefresh}
-      />
+      >
+        {!isLoading && hasData && (
+          <button
+            onClick={() => setIsResetModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+            title="Reset all usage data"
+          >
+            <TrashIcon className="w-4 h-4" />
+            <span>Reset</span>
+          </button>
+        )}
+      </Header>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
         {/* Range selector */}
@@ -314,6 +337,16 @@ export default function UsageAnalytics() {
           </div>
         )}
       </div>
+
+      <ResetConfirmationModal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        onConfirm={handleReset}
+        title="Reset Usage & Cost Data"
+        dataType="usage data"
+        description="Are you sure you want to permanently delete all usage and cost data? This includes all token consumption records, cost breakdowns, session usage data, and hourly aggregations. This action cannot be undone and the data cannot be recovered."
+        confirmButtonText="Reset Usage Data"
+      />
     </div>
   );
 }

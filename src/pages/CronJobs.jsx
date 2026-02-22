@@ -176,12 +176,16 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, onJobCl
 
   const prompt = job.payload?.message || job.payload?.text || job.payload?.prompt || job.prompt || null;
   const agentId = job.agentId || null;
-  
-  // Get model: use job-specific model, or fall back to agent's default model
+
+  // Resolve session target to determine how to display model
+  const sessionTarget = isHeartbeat
+    ? null
+    : (job.sessionTarget || job.payload?.session || (job.payload?.kind === 'agentTurn' ? 'isolated' : 'main'));
+  const isIsolated = sessionTarget === 'isolated';
+
+  // Get model: show if explicitly set in job payload (applies to all job types)
   const agent = agents.find(a => a.id === agentId);
-  const jobModel = job.payload?.model || null;
-  const agentModel = job.agentModel || agent?.model?.primary || agent?.model || null;
-  const displayModel = jobModel || agentModel;
+  const displayModel = job.payload?.model || null;
 
   const IconElement = isHeartbeat ? (
     job.agentEmoji ? (
@@ -324,7 +328,7 @@ function CronJobRow({ job, onEdit, onDelete, onToggleEnabled, onTrigger, onJobCl
                 <span className="text-dark-500">Model:</span>
                 <span className="text-dark-300 font-mono text-[11px]">
                   {formatModel(displayModel)}
-                  {jobModel && (
+                  {job.payload?.model && (
                     <span className="ml-1 text-primary-400" title="Custom model override">*</span>
                   )}
                 </span>
@@ -649,6 +653,10 @@ function CronJobModal({ isOpen, onClose, job, onSave, timezone = 'UTC' }) {
           payload.payload.message = formData.prompt.trim();
         }
         payload.payload.session = formData.sessionTarget;
+        // Allow model override for heartbeat jobs (optional)
+        if (formData.model.trim()) {
+          payload.payload.model = formData.model.trim();
+        }
       } else if (isIsolated) {
         // isolated → agentTurn (schema rule: sessionTarget=isolated required for agentTurn)
         payload.payload.kind = 'agentTurn';
@@ -658,6 +666,10 @@ function CronJobModal({ isOpen, onClose, job, onSave, timezone = 'UTC' }) {
         // main → systemEvent
         payload.payload.kind = 'systemEvent';
         payload.payload.text = formData.prompt.trim();
+        // Allow model override for main session jobs (optional)
+        if (formData.model.trim()) {
+          payload.payload.model = formData.model.trim();
+        }
       }
 
       // Delivery config
@@ -920,7 +932,7 @@ function CronJobModal({ isOpen, onClose, job, onSave, timezone = 'UTC' }) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-dark-300 mb-1">
-                        AI Model {formData.sessionTarget === 'isolated' ? '*' : ''}
+                        AI Model {formData.sessionTarget === 'isolated' ? '*' : '(optional)'}
                       </label>
                       <select
                         value={formData.model}
@@ -928,9 +940,11 @@ function CronJobModal({ isOpen, onClose, job, onSave, timezone = 'UTC' }) {
                         disabled={loadingModels}
                         className="w-full px-3 py-2 bg-dark-800 border border-dark-700 rounded text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60"
                       >
-                        {formData.sessionTarget !== 'isolated' && (
-                          <option value="">Default (use agent model)</option>
-                        )}
+                        <option value="">
+                          {formData.sessionTarget === 'isolated'
+                            ? 'Select a model...'
+                            : 'Default (use agent main session model)'}
+                        </option>
                         {models.map((m) => (
                           <option key={m.id} value={m.id} title={m.id}>
                             {formatModel(m.id)}{m.isDefault ? ' — default' : ''}
@@ -944,8 +958,8 @@ function CronJobModal({ isOpen, onClose, job, onSave, timezone = 'UTC' }) {
                       </select>
                       <p className="text-xs text-dark-500 mt-1">
                         {formData.sessionTarget === 'isolated'
-                          ? 'Required for isolated sessions'
-                          : 'Optional: override agent\u2019s default model'}
+                          ? 'Required: isolated sessions use a fresh context with this model'
+                          : 'Optional: override the model for this job (uses agent\u2019s main session model if not set)'}
                       </p>
                       {loadingModels && (
                         <p className="text-xs text-dark-500 mt-1">Loading models...</p>
@@ -1004,6 +1018,36 @@ function CronJobModal({ isOpen, onClose, job, onSave, timezone = 'UTC' }) {
                           <p className="text-xs text-dark-500 mt-1">
                             Which session to target for heartbeat checks
                           </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-dark-300 mb-1">
+                            AI Model (optional)
+                          </label>
+                          <select
+                            value={formData.model}
+                            onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                            disabled={loadingModels}
+                            className="w-full px-3 py-2 bg-dark-800 border border-dark-700 rounded text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60"
+                          >
+                            <option value="">Default (use agent main session model)</option>
+                            {models.map((m) => (
+                              <option key={m.id} value={m.id} title={m.id}>
+                                {formatModel(m.id)}{m.isDefault ? ' — default' : ''}
+                              </option>
+                            ))}
+                            {formData.model && !models.some((m) => m.id === formData.model) && (
+                              <option value={formData.model} title={formData.model}>
+                                Current: {formatModel(formData.model)}
+                              </option>
+                            )}
+                          </select>
+                          <p className="text-xs text-dark-500 mt-1">
+                            Optional: override the model for heartbeat responses
+                          </p>
+                          {loadingModels && (
+                            <p className="text-xs text-dark-500 mt-1">Loading models...</p>
+                          )}
                         </div>
 
                         <div>
@@ -1300,8 +1344,17 @@ export default function CronJobs() {
     if (!job) return null;
 
     const isHeartbeat = job.source === 'config' || job.payload?.kind === 'heartbeat';
-    
-    // For gateway cron: use lastExecution.sessionKey (set by API enrichment)
+
+    // Resolve session target: agentTurn is always isolated; systemEvent defaults to main
+    const resolvedSessionTarget = isHeartbeat ? null : (
+      job.sessionTarget ||
+      job.payload?.session ||
+      (job.payload?.kind === 'agentTurn' ? 'isolated' : 'main')
+    );
+
+    // For gateway cron: use lastExecution.sessionKey (set by API enrichment).
+    // The API sets this to agent:{id}:main for sessionTarget=main jobs, and
+    // agent:{id}:cron:{jobId} for isolated jobs.
     // For heartbeat fallback: API enrichment resolves the correct key, but if
     // lastExecution is absent we try the v2026.2.19+ isolated key format first,
     // then fall back to the older :heartbeat key.
@@ -1310,19 +1363,18 @@ export default function CronJobs() {
         ? `agent:${job.agentId}:isolated`
         : null);
 
+    // For main-session jobs the messages come from the agent's shared persistent session.
+    // Use kind 'main' so the panel renders a flat list rather than grouping by time gap
+    // (gap-based grouping would create spurious "runs" for normal conversation pauses).
+    const isMainSession = resolvedSessionTarget === 'main';
+
     return {
       key: sessionKey,
       label: job.name,
       agent: job.agentId,
       status: job.status || (job.enabled !== false ? 'idle' : 'completed'),
-      kind: isHeartbeat ? 'heartbeat' : 'cron',
-      // sessionTarget may not be returned by cron.list; infer from payload.kind as fallback
-      // (agentTurn jobs are always isolated — enforced by the API)
-      sessionTarget: isHeartbeat ? null : (
-        job.sessionTarget ||
-        job.payload?.session ||
-        (job.payload?.kind === 'agentTurn' ? 'isolated' : 'main')
-      ),
+      kind: isHeartbeat ? 'heartbeat' : (isMainSession ? 'main' : 'cron'),
+      sessionTarget: resolvedSessionTarget,
       model: job.lastExecution?.model || job.payload?.model || job.agentModel || null,
       inputTokens: job.lastExecution?.inputTokens ?? null,
       outputTokens: job.lastExecution?.outputTokens ?? null,

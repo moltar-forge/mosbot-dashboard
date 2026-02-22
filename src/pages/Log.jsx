@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useActivityStore } from '../stores/activityStore';
 import { parseDatabaseDate } from '../utils/helpers';
@@ -16,9 +16,12 @@ import {
   CheckCircleIcon,
   InformationCircleIcon,
   XCircleIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import Header from '../components/Header';
 import ActivityFeedFilters from '../components/ActivityFeedFilters';
+import ResetConfirmationModal from '../components/ResetConfirmationModal';
+import { resetActivityLogs } from '../api/client';
 import logger from '../utils/logger';
 
 // ============================================================================
@@ -81,14 +84,6 @@ const groupByDay = (logs) => {
 
   return Object.values(groups).sort((a, b) => b.date - a.date);
 };
-
-function formatCost(cost) {
-  if (cost == null || cost === '') return null;
-  const n = Number(cost);
-  if (Number.isNaN(n) || n === 0) return null;
-  if (n < 0.001) return '<$0.001';
-  return `$${n.toFixed(3)}`;
-}
 
 function formatModel(model) {
   if (!model) return null;
@@ -198,12 +193,10 @@ function SeverityBadge({ severity }) {
 function ActivityEntry({ log }) {
   const timestamp = parseDatabaseDate(log.timestamp);
   const timeLabel = format(timestamp, 'h:mm a');
-  const secondsLabel = format(timestamp, ':ss');
   const meta = getEventMeta(log.event_type);
   const Icon = meta.icon;
 
   const displayModel = log.meta?.model ? formatModel(log.meta.model) : null;
-  const displayCost = log.meta?.cost_usd ? formatCost(log.meta.cost_usd) : null;
 
   return (
     <div className="relative pl-8 pb-6 last:pb-0">
@@ -214,7 +207,6 @@ function ActivityEntry({ log }) {
 
       <div className="text-xs text-dark-500 font-medium mb-2">
         {timeLabel}
-        <span className="text-dark-600">{secondsLabel}</span>
       </div>
 
       <div className="card p-4 hover:bg-dark-800/50 transition-colors border-dark-700/50">
@@ -259,9 +251,6 @@ function ActivityEntry({ log }) {
               <span className="text-dark-300 font-mono text-[11px]">{displayModel}</span>
             </span>
           )}
-          {displayCost && (
-            <span className="text-dark-400 font-mono text-[11px]">{displayCost}</span>
-          )}
           {log.workspace_path && (
             <span className="font-mono text-[11px] text-dark-500 truncate max-w-xs" title={log.workspace_path}>
               {log.workspace_path}
@@ -280,6 +269,7 @@ function ActivityEntry({ log }) {
 export default function Log() {
   const { logs, isLoading, isLoadingMore, hasMore, fetchActivity, loadMoreActivity } =
     useActivityStore();
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   useEffect(() => {
     fetchActivity({ limit: 50 }).catch((error) => {
@@ -293,6 +283,12 @@ export default function Log() {
     });
   };
 
+  const handleReset = async (password) => {
+    await resetActivityLogs(password);
+    // Refresh the activity feed after reset
+    await fetchActivity({ limit: 50 });
+  };
+
   const groupedLogs = groupByDay(logs);
 
   return (
@@ -300,7 +296,18 @@ export default function Log() {
       <Header
         title="Activity Log"
         subtitle={`Workspace-wide agent activity, cron runs, and events • ${logs.length} ${logs.length === 1 ? 'entry' : 'entries'}`}
-      />
+      >
+        {!isLoading && logs.length > 0 && (
+          <button
+            onClick={() => setIsResetModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+            title="Reset all activity logs"
+          >
+            <TrashIcon className="w-4 h-4" />
+            <span>Reset</span>
+          </button>
+        )}
+      </Header>
 
       <ActivityFeedFilters />
 
@@ -361,6 +368,16 @@ export default function Log() {
           )}
         </div>
       </div>
+
+      <ResetConfirmationModal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        onConfirm={handleReset}
+        title="Reset Activity Logs"
+        dataType="activity logs"
+        description="Are you sure you want to permanently delete all activity logs? This includes all workspace-wide agent activity, cron runs, events, and task executions. This action cannot be undone and the data cannot be recovered."
+        confirmButtonText="Reset All Logs"
+      />
     </div>
   );
 }

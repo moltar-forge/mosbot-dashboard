@@ -187,6 +187,7 @@ function RunGroup({ run, runNumber, totalRuns, getRoleBadgeColor, formatModelNam
 export default function SessionDetailPanel({ isOpen, onClose, session, latestRunOnly = false }) {
   const [messages, setMessages] = useState([]);
   const [sessionMetadata, setSessionMetadata] = useState(null);
+  const [sessionNotLoaded, setSessionNotLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const scrollContainerRef = useRef(null);
@@ -223,12 +224,14 @@ export default function SessionDetailPanel({ isOpen, onClose, session, latestRun
   const loadMessages = async () => {
     setIsLoading(true);
     setError(null);
-    
+    setSessionNotLoaded(false);
+
     try {
       logger.info('Fetching session messages', { sessionKey: session.key });
       const data = await getSessionMessages(session.key, { limit: 100, includeTools: true });
       setMessages(data.messages || []);
       setSessionMetadata(data.session || null);
+      setSessionNotLoaded(data.sessionNotLoaded === true);
       logger.info('Session messages loaded', { messageCount: data.messages?.length || 0 });
     } catch (err) {
       logger.error('Failed to load session messages', err);
@@ -489,8 +492,26 @@ export default function SessionDetailPanel({ isOpen, onClose, session, latestRun
                         <div className="flex items-center justify-center py-12">
                           <div className="text-center">
                             <ChatBubbleLeftRightIcon className="mx-auto h-12 w-12 text-dark-600" />
-                            <p className="mt-3 text-sm text-dark-400">No messages in this session</p>
+                            {sessionNotLoaded ? (
+                              <>
+                                <p className="mt-3 text-sm text-dark-400">Session not loaded</p>
+                                <p className="mt-1 text-xs text-dark-500">
+                                  This agent&apos;s session isn&apos;t active in the gateway. It will appear once the agent runs.
+                                </p>
+                              </>
+                            ) : (
+                              <p className="mt-3 text-sm text-dark-400">No messages in this session</p>
+                            )}
                           </div>
+                        </div>
+                      )}
+
+                      {!isLoading && !error && messages.length > 0 && session?.kind === 'main' && (
+                        <div className="mb-4 rounded-lg bg-dark-800/60 border border-dark-700/50 px-4 py-3 flex items-start gap-2.5">
+                          <ChatBubbleLeftRightIcon className="w-4 h-4 text-dark-500 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-dark-400">
+                            This job runs inside the agent&apos;s main session. Messages shown are the full shared session history — individual cron runs are not isolated.
+                          </p>
                         </div>
                       )}
 

@@ -258,6 +258,18 @@ export const getUsageAnalytics = async (range = '7d') => {
   return response.data.data;
 };
 
+// Reset Usage Data (admin only, requires password confirmation)
+export const resetUsageData = async (password) => {
+  const response = await api.post('/openclaw/usage/reset', { password });
+  return response.data.data;
+};
+
+// Reset Activity Logs (admin only, requires password confirmation)
+export const resetActivityLogs = async (password) => {
+  const response = await api.post('/activity/reset', { password });
+  return response.data.data;
+};
+
 // Standups API
 export const getStandups = async ({ limit = 50, offset = 0 } = {}) => {
   const response = await api.get('/standups', {
