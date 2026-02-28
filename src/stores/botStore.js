@@ -159,7 +159,18 @@ export const useBotStore = create((set, get) => ({
   setConnected: (connected) => set({ isConnected: connected }),
 
   // Update session counts from OpenClaw Gateway data
-  setSessionCounts: (counts) => set({ sessionCounts: counts }),
+  setSessionCounts: (counts) => {
+    const safe =
+      counts && typeof counts === 'object'
+        ? {
+            running: counts.running ?? 0,
+            active: counts.active ?? 0,
+            idle: counts.idle ?? 0,
+            total: counts.total ?? 0,
+          }
+        : { running: 0, active: 0, idle: 0, total: 0 };
+    set({ sessionCounts: safe });
+  },
 
   // Lightweight poll — only fetches session counts (running/active/idle/total).
   // Used by the global poller to keep the sidebar avatar up to date without the
@@ -167,7 +178,16 @@ export const useBotStore = create((set, get) => ({
   fetchSessionStatus: async () => {
     try {
       const counts = await getOpenClawSessionStatus();
-      set({ sessionCounts: counts });
+      const safe =
+        counts && typeof counts === 'object'
+          ? {
+              running: counts.running ?? 0,
+              active: counts.active ?? 0,
+              idle: counts.idle ?? 0,
+              total: counts.total ?? 0,
+            }
+          : { running: 0, active: 0, idle: 0, total: 0 };
+      set({ sessionCounts: safe });
     } catch (err) {
       logger.warn('Failed to fetch session status', err);
     }
@@ -177,8 +197,9 @@ export const useBotStore = create((set, get) => ({
   fetchSessions: async () => {
     try {
       const result = await getOpenClawSessions();
-      const sessions = result?.sessions || result || [];
-      const dailyCost = result?.dailyCost || 0;
+      const raw = result?.sessions ?? result;
+      const sessions = Array.isArray(raw) ? raw : [];
+      const dailyCost = result?.dailyCost ?? 0;
 
       set({
         sessions,
@@ -326,24 +347,26 @@ export const useBotStore = create((set, get) => ({
   getActivityStatus: () => {
     const state = get();
     if (!state.isConnected) return 'Offline';
+    const counts = state.sessionCounts ?? { running: 0, active: 0, idle: 0, total: 0 };
     // If OpenClaw agents are actively running (updated within 2 min), show Working
-    if (state.sessionCounts.running > 0) return 'Working';
+    if (counts.running > 0) return 'Working';
     // If dashboard has in-flight requests, show Working
     if (state.inflightRequests > 0) return 'Working';
     // If agents have recent activity (within 30 min), show Active
-    if (state.sessionCounts.active > 0) return 'Active';
+    if (counts.active > 0) return 'Active';
     return 'Idle';
   },
   getActivityLabel: () => {
     const state = get();
     if (!state.isConnected) return 'Offline - Reconnecting...';
-    if (state.sessionCounts.running > 0) {
-      const count = state.sessionCounts.running;
+    const counts = state.sessionCounts ?? { running: 0, active: 0, idle: 0, total: 0 };
+    if (counts.running > 0) {
+      const count = counts.running;
       return `${count} agent${count > 1 ? 's' : ''} running`;
     }
     if (state.inflightRequests > 0) return 'Working on tasks...';
-    if (state.sessionCounts.active > 0) {
-      const count = state.sessionCounts.active;
+    if (counts.active > 0) {
+      const count = counts.active;
       return `${count} agent${count > 1 ? 's' : ''} active`;
     }
     return 'Ready for tasks';

@@ -73,13 +73,14 @@ export const useAgentStore = create((set, get) => ({
 
     try {
       const agentsData = await getAgents();
+      const raw = Array.isArray(agentsData) ? agentsData : [];
 
       // Transform workspace paths to workspaceRootPath format for consistency
       // Derive workspaceRootPath from agent.workspace by stripping /home/node/.openclaw/ prefix
       // Examples:
       //   /home/node/.openclaw/workspace -> /workspace
       //   /home/node/.openclaw/workspace-cto -> /workspace-cto
-      let agents = agentsData.map((agent) => {
+      let agents = raw.map((agent) => {
         let workspaceRootPath = `/workspace-${agent.id}`; // fallback
         if (agent.workspace) {
           // Strip /home/node/.openclaw/ prefix if present

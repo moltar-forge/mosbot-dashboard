@@ -47,6 +47,7 @@ export default function BotAvatar({ enableEyeTracking = false, compact = false }
   }, [enableEyeTracking]);
 
   const { sessionCounts } = useBotStore();
+  const counts = sessionCounts ?? { running: 0, active: 0, idle: 0, total: 0 };
 
   if (compact) {
     return (
@@ -939,8 +940,8 @@ export default function BotAvatar({ enableEyeTracking = false, compact = false }
             {activityStatus === 'Offline'
               ? 'Offline'
               : activityStatus === 'Working'
-                ? sessionCounts.running > 0
-                  ? `${sessionCounts.running} running`
+                ? counts.running > 0
+                  ? `${counts.running} running`
                   : 'Running'
                 : 'Online'}
           </span>
