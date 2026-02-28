@@ -18,7 +18,7 @@ MosBot Dashboard is a React 18 + Vite SPA that provides task management, org cha
 
 - [ ] Fix the known issues above.
 - [ ] Org chart: reference OpenClaw agents list and org-chart JSON file for supplementary metadata.
-- [ ] Workspace file viewer: display JSON frontmatter.
+- [x] Workspace file viewer: display JSON frontmatter.
 - [ ] Workspace file viewer: display other file types instead of just Markdown (e.g. `.jpg`, `.wav` audio player, `.js` with proper syntax highlighting, etc.).
 - [ ] Increase code coverage to 100% for Dashboard.
 
