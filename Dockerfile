@@ -14,7 +14,8 @@ EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # Stage 1: build the Vite app
-FROM node:20-alpine AS build
+# Use BUILDPLATFORM to avoid QEMU emulation issues - JS builds are platform-agnostic
+FROM --platform=$BUILDPLATFORM node:20-alpine AS build
 
 WORKDIR /app
 
