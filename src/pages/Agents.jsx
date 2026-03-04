@@ -36,7 +36,7 @@ function getAgentColor(agentId) {
   return AGENT_COLORS[hash % AGENT_COLORS.length];
 }
 
-export default function OrgChart() {
+export default function Agents() {
   const [subagents, setSubagents] = useState([]);
   const [orgChartConfig, setOrgChartConfig] = useState(null);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
@@ -340,7 +340,7 @@ export default function OrgChart() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <div className="inline-block w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-dark-400">Loading org chart...</p>
+          <p className="text-dark-400">Loading agents...</p>
         </div>
       </div>
     );
@@ -405,8 +405,8 @@ export default function OrgChart() {
   return (
     <div className="flex flex-col h-full">
       <Header
-        title="Organization Chart"
-        subtitle="Agent hierarchy and status overview"
+        title="Agents"
+        subtitle="Your agent team and status overview"
         onRefresh={handleRefresh}
       >
         {isAdmin() && (
@@ -434,7 +434,7 @@ export default function OrgChart() {
               <ExclamationTriangleIcon className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-yellow-500">
-                  Could not load org chart configuration
+                  Could not load agent configuration
                 </p>
                 <p className="text-xs text-dark-400 mt-1">{configError}</p>
               </div>
