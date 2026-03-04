@@ -254,11 +254,6 @@ export default function AgentEditModal({ isOpen, onClose, onSave, agentId = null
       return;
     }
 
-    if (!formData.title.trim()) {
-      showToast('Title is required', 'error');
-      return;
-    }
-
     if (!formData.displayName.trim()) {
       showToast('Display name is required', 'error');
       return;
@@ -384,24 +379,22 @@ export default function AgentEditModal({ isOpen, onClose, onSave, agentId = null
                         value={formData.id}
                         onChange={(e) => handleChange('id', e.target.value)}
                         disabled={!isCreateMode || isSaving}
-                        placeholder="e.g., coo, cto, cmo"
+                        placeholder="e.g., orchestrator, researcher, builder"
                         className="input-field w-full disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                       <p className="text-xs text-dark-500 mt-1">
-                        Lowercase, no spaces (e.g., coo, cto)
+                        Lowercase, no spaces (e.g., orchestrator, builder)
                       </p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-dark-300 mb-2">
-                        Title <span className="text-red-400">*</span>
-                      </label>
+                      <label className="block text-sm font-medium text-dark-300 mb-2">Title</label>
                       <input
                         type="text"
                         value={formData.title}
                         onChange={(e) => handleChange('title', e.target.value)}
                         disabled={isSaving}
-                        placeholder="e.g., COO, CTO, CMO"
+                        placeholder="e.g., Orchestrator, Engineer, Researcher"
                         className="input-field w-full disabled:opacity-50"
                       />
                     </div>
@@ -415,7 +408,7 @@ export default function AgentEditModal({ isOpen, onClose, onSave, agentId = null
                         value={formData.displayName}
                         onChange={(e) => handleChange('displayName', e.target.value)}
                         disabled={isSaving}
-                        placeholder="e.g., MosBot, Elon, Gary"
+                        placeholder="e.g., MosBot, ResearchBot, BuilderBot"
                         className="input-field w-full disabled:opacity-50"
                       />
                     </div>
@@ -427,7 +420,7 @@ export default function AgentEditModal({ isOpen, onClose, onSave, agentId = null
                         value={formData.label}
                         onChange={(e) => handleChange('label', e.target.value)}
                         disabled={isSaving}
-                        placeholder="e.g., mosbot-coo"
+                        placeholder="e.g., mosbot-orchestrator"
                         className="input-field w-full disabled:opacity-50"
                       />
                     </div>
@@ -502,7 +495,7 @@ export default function AgentEditModal({ isOpen, onClose, onSave, agentId = null
                             value={formData.workspace}
                             onChange={(e) => handleChange('workspace', e.target.value)}
                             disabled={isSaving}
-                            placeholder="/home/node/.openclaw/workspace-coo"
+                            placeholder="/home/node/.openclaw/workspace-myagent"
                             className="input-field w-full disabled:opacity-50"
                           />
                         </div>

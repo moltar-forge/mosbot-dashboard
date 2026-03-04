@@ -31,9 +31,9 @@ export function validateOrgChart(orgChart) {
         leadershipIds.add(leader.id);
       }
 
-      if (!leader.title || typeof leader.title !== 'string') {
+      if (leader.title !== undefined && leader.title !== null && typeof leader.title !== 'string') {
         errors.push(
-          `leadership[${idx}] (${leader.id || 'unknown'}): title is required and must be a string`,
+          `leadership[${idx}] (${leader.id || 'unknown'}): title must be a string if provided`,
         );
       }
 
@@ -239,7 +239,7 @@ export function syncOrgChartToOpenClaw(orgChart, openclawConfig) {
         id: leader.id,
         workspace: `/home/node/.openclaw/workspace-${leader.id}`,
         identity: {
-          name: leader.displayName || leader.title,
+          name: leader.displayName || leader.title || leader.id,
           theme: leader.description || '',
           emoji: '🤖',
         },
@@ -259,7 +259,7 @@ export function syncOrgChartToOpenClaw(orgChart, openclawConfig) {
     if (!agent.identity) {
       agent.identity = {};
     }
-    agent.identity.name = leader.displayName || leader.title;
+    agent.identity.name = leader.displayName || leader.title || leader.id;
   });
 
   return updatedConfig;

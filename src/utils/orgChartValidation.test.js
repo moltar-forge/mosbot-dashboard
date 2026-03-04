@@ -46,15 +46,23 @@ describe('orgChartValidation utils', () => {
       );
       expect(result.errors).toContain('leadership[0] (ceo): reportsTo must be a string or null');
       expect(result.errors).toContain('leadership[1]: duplicate id "ceo"');
-      expect(result.errors).toContain(
-        'leadership[1] (ceo): title is required and must be a string',
-      );
+      expect(result.errors).toContain('leadership[1] (ceo): title must be a string if provided');
       expect(result.errors).toContain(
         'leadership[1] (ceo): label is required and must be a string',
       );
       expect(result.errors).toContain(
         'leadership[1] (ceo): reportsTo "missing" does not reference a valid leadership id',
       );
+    });
+
+    it('validates an org chart without title (title is optional)', () => {
+      const orgChart = {
+        leadership: [{ id: 'bot1', label: 'agent:bot1:main', status: 'active' }],
+        departments: [],
+        subagents: [],
+      };
+
+      expect(validateOrgChart(orgChart)).toEqual({ isValid: true, errors: [] });
     });
 
     it('allows forward leadership reportsTo references', () => {
@@ -206,6 +214,31 @@ describe('orgChartValidation utils', () => {
         model: {
           primary: 'openrouter/anthropic/claude-sonnet-4.5',
           fallbacks: [],
+        },
+      });
+    });
+
+    it('creates stub agent from leadership entry without title', () => {
+      const updated = syncOrgChartToOpenClaw(
+        {
+          leadership: [
+            {
+              id: 'builder',
+              displayName: 'BuilderBot',
+              status: 'scaffolded',
+              description: 'Builds things',
+            },
+          ],
+        },
+        {},
+      );
+
+      expect(updated.agents.list).toHaveLength(1);
+      expect(updated.agents.list[0]).toMatchObject({
+        id: 'builder',
+        identity: {
+          name: 'BuilderBot',
+          theme: 'Builds things',
         },
       });
     });
