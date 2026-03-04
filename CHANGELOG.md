@@ -32,6 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.gitignore` updated to exclude additional generated files
 - Documentation references updated to align with new Agents naming
 
+### Fixed
+
+- Directory ensure flow now checks for existing workspace directories before creating `.gitkeep`, avoiding routine `409 FILE_EXISTS` responses on Docs/Projects/Skills page load
+- Workspace directory paths are now normalized before ensure/create calls to prevent duplicate or trailing slash variants (for example `/docs//.gitkeep`)
+
 ### Security
 
 - Switched Gitleaks license key to an organization secret
